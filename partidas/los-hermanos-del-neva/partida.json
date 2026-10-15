@@ -1,0 +1,410 @@
+{
+  "slug": "los-hermanos-del-neva",
+  "titulo": "Los Hermanos del Neva",
+  "reglamento": "d20-simple",
+  "idioma": "es",
+  "creada": "2026-10-13T00:00:00-03:00",
+  "version": 1,
+  "ambientacion": {
+    "epoca": "Otoño de 1917",
+    "lugar": "Rybny Bereg, barrio pesquero ficticio junto al Neva, en las afueras de Petrogrado",
+    "etiquetas": [
+      "rusia-1917",
+      "historica",
+      "sin-magia"
+    ],
+    "tono": [
+      "aventura",
+      "misterio",
+      "supervivencia",
+      "vínculos familiares",
+      "decisiones difíciles",
+      "humor ocasional"
+    ],
+    "estilo_visual": "Pintura al óleo de época, paleta gris pizarra y ocre, luz baja de otoño ruso, niebla sobre el río Neva, realismo histórico de 1917, gente de clase obrera, sin heroísmo de cartel"
+  },
+  "tema": {
+    "acento": "#a8442f"
+  },
+  "reglas": {
+    "bono_oficio": 2,
+    "naturales": true,
+    "critico_dobla_dados": true,
+    "dano_minimo": 1,
+    "atributo_maximo": 4,
+    "unidades": "metros",
+    "muerte": "No hay muerte permanente salvo que se acuerde jugar en modo letal.",
+    "crudeza": "Alta: los jugadores pidieron violencia todo lo gráfica posible (2026-10-13)."
+  },
+  "reglas_casa": [
+    {
+      "id": "R1",
+      "texto": "Las distancias se miden en metros.",
+      "desde": "2026-10-13"
+    },
+    {
+      "id": "R2",
+      "texto": "Ventaja: si los dos hermanos gastan su acción en el mismo objetivo, cada uno a su manera y de forma creíble, quien lidera tira 2d20 y vale el más alto. Desventaja: 2d20 y vale el más bajo. No se acumulan y se anulan entre sí. Reemplaza al +1 de ayuda (coincide con la acción Ayudar del SRD 5.2).",
+      "desde": "2026-10-13"
+    },
+    {
+      "id": "R3",
+      "texto": "Set completo de dados de D&D: d20 para pruebas y ataques (dificultades 10 sencilla, 15 exigente, 20 difícil); Defensa base 12; bonos escritos duplicados (Oficio +2, «Tengo una idea» +4); daño por dado según el arma; d100 para pura suerte.",
+      "desde": "2026-10-13"
+    },
+    {
+      "id": "R4",
+      "texto": "Antes de una tirada con riesgo, el director anuncia atributo, dificultad y qué se gana o pierde, y los jugadores confirman. Mirar o recordar sin riesgo se tira directo.",
+      "desde": "2026-10-13"
+    },
+    {
+      "id": "R5",
+      "texto": "En toda prueba d20, un 20 natural siempre tiene éxito y un 1 natural siempre falla.",
+      "desde": "2026-10-13"
+    },
+    {
+      "id": "R6",
+      "texto": "El 20 natural es crítico: éxito más un beneficio extra concreto, que queda por escrito. En combate, los dados de daño se tiran dos veces. Aplica de forma retroactiva desde el cambio al d20.",
+      "desde": "2026-10-15"
+    },
+    {
+      "id": "R7",
+      "texto": "Señas de hermanos: entenderse con un gesto no requiere tirada mientras se vean; sirve para una idea corta por gesto.",
+      "desde": "2026-10-13"
+    },
+    {
+      "id": "R8",
+      "texto": "Crudeza alta: la violencia se narra todo lo gráfica que se pueda (reemplaza «evita violencia gráfica» de la biblia).",
+      "desde": "2026-10-13"
+    }
+  ],
+  "reloj": {
+    "dia": 1,
+    "plazos": [
+      "Pagar 30 rublos a Baránov antes del anochecer o perder La Sardina Insolente"
+    ]
+  },
+  "escenas_jugadas": 2,
+  "escena": {
+    "numero": 2,
+    "titulo": "Bajo el Muelle Torcido",
+    "lugar": "Hueco seco bajo el Muelle Torcido, Rybny Bereg",
+    "hora": "primera hora de la mañana",
+    "clima": "Otoño gris y frío, sin viento bajo las tablas",
+    "descripcion": "Huele a brea y a barro frío; la luz entra en rayas por entre las tablas. Stepán, herido en el costado, está recostado contra un pilote con el paquete en los brazos: «Pregunten lo que quieran. A ustedes no les voy a mentir». Arriba, Anya remienda redes y escucha por las rendijas.",
+    "posiciones": [
+      {
+        "quien": "Jualjin",
+        "donde": "Bajo el muelle, junto a Stepán"
+      },
+      {
+        "quien": "Crisljin",
+        "donde": "Bajo el muelle, empapado"
+      },
+      {
+        "quien": "Stepán",
+        "donde": "Bajo el muelle, contra un pilote"
+      },
+      {
+        "quien": "Anya",
+        "donde": "Arriba, sentada en el borde del muelle, justo encima"
+      }
+    ],
+    "imagen": "escena-02-tarjeta.svg",
+    "imagen_fuente": {
+      "modo": "ninguna",
+      "origen": "tarjeta generada localmente"
+    }
+  },
+  "personajes": [
+    {
+      "id": "jualjin",
+      "nombre": "Jualjin",
+      "rol": "hermano del medio",
+      "nivel": 1,
+      "vida": 14,
+      "vida_max": 14,
+      "defensa": 12,
+      "proteccion": 1,
+      "color": "#2a78d6",
+      "atributos": {
+        "fuerza": 3,
+        "agilidad": 1,
+        "ingenio": 1,
+        "corazon": 2
+      },
+      "aspecto": "Cuerpo robusto de tirar redes y cargar pescado; manos ásperas, pelo desordenado y una cabeza visiblemente más grande de lo habitual.",
+      "personalidad": "Rebelde, algo aniñado, impulsivo y de buen corazón; le cuesta quedarse quieto ante un abuso. Lo decide su jugador.",
+      "bueno_para": "Remar contra corriente, cargar personas, sujetar cuerdas, forcejear y defender a alguien.",
+      "oficio": {
+        "bono": 2,
+        "aplica": "Fuerza al remar, tirar redes o manejar cargas con cuerdas"
+      },
+      "rasgos": [
+        {
+          "nombre": "Cabeza grande",
+          "texto": "Los cascos comunes no le sirven. Los huecos muy estrechos pueden dificultarle el paso (se avisa antes)."
+        }
+      ],
+      "habilidades": [
+        {
+          "nombre": "¡A mi hermano no!",
+          "texto": "Una vez por combate, recibe un ataque dirigido a Crisljin si está a su lado; su protección se aplica.",
+          "recarga": "combate",
+          "disponible": true
+        }
+      ],
+      "equipo": [
+        {
+          "nombre": "Bichero de pescador",
+          "dano": "1d8"
+        },
+        {
+          "nombre": "Cuchillo de trabajo",
+          "dano": "1d4"
+        },
+        {
+          "nombre": "Abrigo grueso",
+          "texto": "Protección 1 (incluida)"
+        },
+        {
+          "nombre": "Cuerda y guantes de trabajo"
+        }
+      ],
+      "condiciones": []
+    },
+    {
+      "id": "crisljin",
+      "nombre": "Crisljin",
+      "rol": "hermano menor",
+      "nivel": 1,
+      "vida": 11,
+      "vida_max": 11,
+      "defensa": 12,
+      "proteccion": 1,
+      "color": "#eb6834",
+      "atributos": {
+        "fuerza": 1,
+        "agilidad": 3,
+        "ingenio": 2,
+        "corazon": 1
+      },
+      "aspecto": "Más pequeño y ligero que Jualjin, rápido de pies, dedos hábiles y una nariz grande y prominente.",
+      "personalidad": "Algo retraído, observador y creativo; prefiere una solución inesperada a imponerse a gritos. Lo decide su jugador.",
+      "bueno_para": "Correr, equilibrarse en embarcaciones, moverse por espacios pequeños, reparar redes e improvisar.",
+      "oficio": {
+        "bono": 2,
+        "aplica": "Agilidad al moverse por barcas y muelles, o Ingenio al reparar redes y aparejos"
+      },
+      "rasgos": [
+        {
+          "nombre": "Pequeño",
+          "texto": "Atraviesa huecos inaccesibles para Jualjin."
+        },
+        {
+          "nombre": "Ñata reconocible",
+          "texto": "Los testigos lo recuerdan; sin olfato sobrenatural ni penalización."
+        }
+      ],
+      "habilidades": [
+        {
+          "nombre": "Tengo una idea",
+          "texto": "+4 a una prueba de Ingenio para una solución creativa con objetos presentes; hay que explicar la idea.",
+          "bono": 4,
+          "recarga": "escena",
+          "disponible": true
+        }
+      ],
+      "equipo": [
+        {
+          "nombre": "Cuchillo de pescador",
+          "dano": "1d6"
+        },
+        {
+          "nombre": "Honda",
+          "dano": "1d4",
+          "distancia": true,
+          "texto": "Piedras si el entorno lo permite"
+        },
+        {
+          "nombre": "Abrigo grueso",
+          "texto": "Protección 1 (incluida)"
+        },
+        {
+          "nombre": "Aguja de redes, hilo y herramientas pequeñas"
+        }
+      ],
+      "condiciones": [
+        {
+          "nombre": "Empapado",
+          "efecto": "Ropa mojada y frío: desventaja en Agilidad hasta secarse o cambiarse.",
+          "desventaja": [
+            "agilidad"
+          ]
+        }
+      ]
+    }
+  ],
+  "enemigos": [],
+  "recursos": {
+    "Barca": "La Sardina Insolente, amarrada en el Muelle Torcido",
+    "Red": "1 reparada, con la caja de madera aún enredada",
+    "Linterna": "combustible limitado",
+    "Raciones": 2,
+    "Rublos": 5
+  },
+  "pnj": [
+    {
+      "nombre": "Anya",
+      "rol": "madre; repara redes y administra lo poco que queda",
+      "actitud": "amistosa",
+      "estado": "Arriba, remendando y vigilando. Guardó el diente de Gúsev en el delantal.",
+      "notas": [
+        "Sabe que Stepán está escondido y que vio a Mijaíl hace dos noches.",
+        "Pendiente: «Tú y yo hablamos luego» y «después vamos a hablar de ese hombre»."
+      ]
+    },
+    {
+      "nombre": "Pável",
+      "rol": "padre; lesionado, no puede pescar",
+      "actitud": "amistosa",
+      "estado": "En casa, 40 m calle arriba, junto al fuego.",
+      "notas": []
+    },
+    {
+      "nombre": "Mijaíl «Misha»",
+      "rol": "hermano mayor; transportaba pescado a Petrogrado",
+      "actitud": "amistosa",
+      "estado": "Desaparecido hace varios días. Vivo hace dos noches, según Stepán.",
+      "notas": []
+    },
+    {
+      "nombre": "Stepán",
+      "rol": "marinero herido que llegó en un bote",
+      "actitud": "amistosa",
+      "estado": "Herido en el costado y estable; escondido bajo el muelle con el paquete. Para la patrulla, ahogado.",
+      "notas": [
+        "Confía en los hermanos: no les mentirá (crítico de Jualjin).",
+        "«Misha me sacó a cuestas. Sin él, yo no estaría aquí»."
+      ]
+    },
+    {
+      "nombre": "Gúsev",
+      "rol": "cobrador de Baránov",
+      "actitud": "hostil",
+      "estado": "Detenido por la patrulla tras la falsa acusación de Jualjin: nariz rota y un diente menos.",
+      "notas": [
+        "«Al anochecer. La barca.»",
+        "«Baránov va a saber esto.»"
+      ]
+    },
+    {
+      "nombre": "Lev Baránov",
+      "rol": "comerciante que compra el pescado; acreedor de la familia",
+      "actitud": "indiferente",
+      "estado": "Adelantó el calafateo de la barca en invierno: le deben 30 rublos. Aún no aparece.",
+      "notas": []
+    },
+    {
+      "nombre": "El del silbato",
+      "rol": "miliciano al mando de la patrulla del Puente de Hierro",
+      "actitud": "indiferente",
+      "estado": "Cree que la familia es inofensiva y anotó al hombre del bote como ahogado.",
+      "notas": [
+        "«Si el río devuelve el cuerpo, avisen en el Puente de Hierro. Pregunten por Belov.»"
+      ]
+    },
+    {
+      "nombre": "Soldado del rifle",
+      "rol": "infantería de la guarnición",
+      "actitud": "indiferente",
+      "estado": "Se llevó a Gúsev. Lleva una cinta roja medio escondida bajo la solapa.",
+      "notas": []
+    },
+    {
+      "nombre": "Soldado de la porra",
+      "rol": "infantería de la guarnición",
+      "actitud": "indiferente",
+      "estado": "Se llevó a la sirga el bote de Stepán.",
+      "notas": []
+    },
+    {
+      "nombre": "Sargento Belov",
+      "rol": "manda en el Puente de Hierro",
+      "actitud": "indiferente",
+      "estado": "Nombrado, nunca visto.",
+      "notas": []
+    },
+    {
+      "nombre": "Yefim",
+      "rol": "pescador viejo del amarre vecino",
+      "actitud": "indiferente",
+      "estado": "Salió al río tras el alboroto.",
+      "notas": [
+        "«Mirar es gratis, muchacho. Lo caro es lo del cobrador. Cuando vuelvan, vuelven por el muelle entero.»"
+      ]
+    }
+  ],
+  "pistas": [
+    {
+      "texto": "Mijaíl estaba vivo hace dos noches y sacó a cuestas a Stepán, herido, de algún lugar.",
+      "fuente": "Stepán (crítico de Jualjin)"
+    },
+    {
+      "texto": "El bote de Stepán es de los que cuelgan de un barco grande; la patrulla lo llamó «bote de la Armada». Alguien raspó el nombre de la proa. La patrulla se lo llevó.",
+      "fuente": "Jualjin (Ingenio) y la patrulla"
+    },
+    {
+      "texto": "La patrulla buscaba «un bote de la Armada y al hombre que venía dentro». No mencionaron ningún paquete.",
+      "fuente": "El del silbato"
+    },
+    {
+      "texto": "Patrulla mixta: un miliciano al mando y dos soldados de infantería corriente; el del rifle lleva una cinta roja medio escondida.",
+      "fuente": "Jualjin (Ingenio)"
+    },
+    {
+      "texto": "Stepán: «No dejen que se lleven esto» (el paquete) y «Me buscan».",
+      "fuente": "Stepán"
+    },
+    {
+      "texto": "Una caja de madera que no debería estar allí apareció enredada en la red.",
+      "fuente": "Pesca de la mañana"
+    }
+  ],
+  "tramas": [
+    {
+      "nombre": "El hermano que no volvió",
+      "estado": "activa",
+      "nota": "Mijaíl vivo hace dos noches; Stepán sabe más."
+    },
+    {
+      "nombre": "La deuda del muelle",
+      "estado": "activa",
+      "nota": "30 rublos a Baránov antes del anochecer; su cobrador, preso y enemigo."
+    },
+    {
+      "nombre": "Algo bajo el agua",
+      "estado": "latente",
+      "nota": "La caja enredada en la red."
+    },
+    {
+      "nombre": "El puente y las banderas",
+      "estado": "latente",
+      "nota": "La patrulla del Puente de Hierro ya pisó el muelle."
+    },
+    {
+      "nombre": "Pan para las Tres Chimeneas",
+      "estado": "sin-abrir",
+      "nota": ""
+    }
+  ],
+  "misterios": [
+    "¿Qué hay en el paquete de Stepán?",
+    "¿Qué hay en la caja de la red?",
+    "¿Dónde está Mijaíl y de dónde sacó a Stepán?",
+    "¿Quién hirió a Stepán y por qué lo busca la patrulla?",
+    "¿Por qué rasparon el nombre del bote?",
+    "¿A quién responde de verdad el sargento Belov?"
+  ],
+  "actualizado": "2026-10-15T08:07:43-03:00"
+}

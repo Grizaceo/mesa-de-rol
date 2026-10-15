@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Mesa de rol</title>
+  <link rel="stylesheet" href="/visor/estilo.css">
+</head>
+<body>
+  <header class="barra">
+    <div class="barra-titulo">
+      <h1 id="titulo-partida">Mesa de rol</h1>
+      <p id="subtitulo" class="texto-2"></p>
+    </div>
+    <div id="reloj" class="reloj"></div>
+    <div class="barra-controles">
+      <span id="conexion" class="conexion" data-estado="conectando">conectando…</span>
+      <label class="oculto-visual" for="selector-partida">Partida</label>
+      <select id="selector-partida"></select>
+      <button id="boton-tema" type="button" title="Cambiar tema">Tema: auto</button>
+    </div>
+  </header>
+
+  <main class="tablero">
+    <section class="panel panel-escena" aria-labelledby="titulo-escena">
+      <figure class="escena-figura">
+        <div id="escena-imagen" class="escena-imagen"></div>
+        <figcaption id="escena-pie" class="texto-3"></figcaption>
+      </figure>
+      <div class="escena-texto">
+        <p id="escena-numero" class="eyebrow"></p>
+        <h2 id="titulo-escena"></h2>
+        <p id="escena-meta" class="texto-2"></p>
+        <p id="escena-descripcion" class="narracion"></p>
+        <ul id="posiciones" class="posiciones"></ul>
+      </div>
+    </section>
+
+    <section class="panel panel-dados" aria-labelledby="titulo-dados">
+      <h2 id="titulo-dados">Dados</h2>
+      <div id="bandeja" class="bandeja" aria-live="polite"><p class="texto-3">Aún no hay tiradas.</p></div>
+      <h3 class="subtitulo-panel">Historial</h3>
+      <ol id="historial" class="historial"></ol>
+    </section>
+
+    <section class="panel panel-personajes" aria-labelledby="titulo-personajes">
+      <h2 id="titulo-personajes">Personajes</h2>
+      <div id="fichas" class="fichas"></div>
+      <div id="enemigos"></div>
+    </section>
+
+    <section class="panel panel-mundo" aria-labelledby="titulo-mundo">
+      <h2 id="titulo-mundo">El mundo</h2>
+      <div class="pestanas" role="tablist" id="pestanas"></div>
+      <div id="mundo" class="mundo" role="tabpanel"></div>
+    </section>
+  </main>
+
+  <script type="module" src="/visor/app.js"></script>
+</body>
+</html>

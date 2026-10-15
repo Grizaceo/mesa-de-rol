@@ -1,0 +1,10 @@
+__pycache__/
+*.pyc
+.venv/
+*.json.tmp
+.env
+# Las imágenes generadas o descargadas pesan: se quedan locales.
+partidas/*/imagenes/*.png
+partidas/*/imagenes/*.jpg
+partidas/*/imagenes/*.jpeg
+partidas/*/imagenes/*.webp

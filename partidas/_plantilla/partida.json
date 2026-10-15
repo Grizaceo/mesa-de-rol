@@ -1,0 +1,57 @@
+{
+  "slug": "_plantilla",
+  "titulo": "Nueva historia",
+  "reglamento": "d20-simple",
+  "idioma": "es",
+  "version": 0,
+  "ambientacion": {
+    "epoca": "",
+    "lugar": "",
+    "etiquetas": [],
+    "tono": [],
+    "estilo_visual": ""
+  },
+  "tema": { "acento": "#8a6d3b" },
+  "reglas": {
+    "bono_oficio": 2,
+    "naturales": true,
+    "critico_dobla_dados": true,
+    "dano_minimo": 1,
+    "atributo_maximo": 4,
+    "unidades": "metros",
+    "muerte": "No hay muerte permanente salvo que se acuerde jugar en modo letal.",
+    "crudeza": "Por acordar en la sesión cero."
+  },
+  "reglas_casa": [],
+  "reloj": { "dia": 1, "plazos": [] },
+  "escenas_jugadas": 0,
+  "escena": { "numero": 0, "titulo": "Sesión cero", "lugar": "", "hora": "", "descripcion": "", "posiciones": [], "imagen": null },
+  "personajes": [
+    {
+      "id": "pj1",
+      "nombre": "Personaje 1",
+      "rol": "",
+      "nivel": 1,
+      "vida": 12,
+      "vida_max": 12,
+      "defensa": 12,
+      "proteccion": 0,
+      "color": "#2a78d6",
+      "atributos": { "fuerza": 1, "agilidad": 1, "ingenio": 1, "corazon": 1 },
+      "aspecto": "",
+      "personalidad": "",
+      "bueno_para": "",
+      "oficio": { "bono": 2, "aplica": "" },
+      "rasgos": [],
+      "habilidades": [],
+      "equipo": [],
+      "condiciones": []
+    }
+  ],
+  "enemigos": [],
+  "recursos": {},
+  "pnj": [],
+  "pistas": [],
+  "tramas": [],
+  "misterios": []
+}

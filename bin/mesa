@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+# Ejecuta la CLI sin instalar nada: bin/mesa <comando>
+RAIZ="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+PYTHONPATH="$RAIZ${PYTHONPATH:+:$PYTHONPATH}" exec python3 -m mesa "$@"
