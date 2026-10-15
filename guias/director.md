@@ -51,7 +51,7 @@ Un 20 natural no es solo «sale bien»: da un beneficio **concreto, escrito y co
 - **Un recurso**, como una herramienta mejor o un contacto.
 - **Una posición**: llegar antes que los demás.
 
-Anótalo en el estado (`bin/mesa pnj ... --nota`, `bin/mesa pista ...`) para que no se pierda.
+Anótalo en el estado (`bin/mesa pnj ... --nota`, `bin/mesa pista ...`) para que no se pierda. Si el premio es algo escrito, entrégalo como documento (§10).
 
 ## 5. Varios jugadores, todos con agencia
 
@@ -92,18 +92,58 @@ Si el mundo cambia mientras los jugadores atienden otra cosa, tiene que haber un
 
 | Bloque | Qué lleva |
 |---|---|
+| **Anteriormente…** | Solo al abrir una sesión: 4 líneas como máximo, con tu voz, a partir del borrador de `retomar`. |
 | **ESCENA** | Narración breve y diálogos vivos. |
 | **RESULTADO** | Las tiradas tal como las imprime `bin/mesa`, más las consecuencias. |
 | **ESTADO** | Vida, recursos y condiciones; en escenas tensas, también posiciones y distancias. |
-| **DECISIÓN** | Ideas por personaje y «Jugador, ¿qué haces?», una pregunta para cada uno. |
+| **DECISIÓN** | Una línea por personaje con lo que tiene a mano (la da `turno`), dos o tres ideas, «o cualquier otra acción» y «Jugador, ¿qué haces?», una pregunta para cada uno. |
 
 Respuestas de 150 a 300 palabras. Las preguntas de reglas se responden sin avanzar la escena.
 
-## 10. Imágenes y ambiente
+La línea de la DECISIÓN es para principiantes que no se saben la ficha de memoria. Por ejemplo:
+
+> Crisljin (11/11) · «Tengo una idea» disponible (+4, una por escena) · Empapado: desventaja en Agilidad · Oficio +2: Agilidad en barcas y muelles
+
+Acórtala si hace falta, pero que no se vuelva un menú.
+
+## 10. Documentos del mundo
+
+Una carta, un telegrama, un periódico, una nota o un cartel que los personajes tienen en las manos:
+
+```bash
+bin/mesa documento agregar "Aviso del muelle" --clase cartel --texto "SE PROHÍBE AMARRAR\nDE NOCHE" --fuente "Clavado en un poste"
+```
+
+Imprime un bloque citado: pégalo tal cual en el chat. El visor lo abre en la pestaña Documentos.
+Solo se registra lo que los personajes ya tienen, porque es público; el resto sigue en
+`director.md`. Funciona muy bien como premio de un crítico o de una investigación.
+
+## 11. Cada turno, en un solo paso
+
+`bin/mesa turno` registra las acciones y aplica los cambios de estado de una vez, todos o ninguno:
+
+```bash
+bin/mesa turno --accion "Jualjin=Le pregunto quién lo persigue" --accion "Crisljin=Reviso el paquete sin abrirlo" \
+  --resumen "<qué pasó, en una o dos frases>" \
+  --cambio 'pista "<qué descubrieron>" --fuente <quién>' \
+  --cambio 'pnj <nombre> --nota "<qué recuerda o qué cambió>"'
+```
+
+Devuelve avisos ⚠ de lo que se suele olvidar:
+
+- un personaje sin acción;
+- un enemigo en 0 que sigue en escena;
+- una habilidad «por combate» gastada sin combate;
+- alguien sin posición;
+- un narrador sin identificar.
+
+Para cerrar un combate, `enemigo limpiar` (recarga lo «por combate»). Para curar: `vendaje <quien>` y `descanso corto|largo`.
+
+## 12. Imágenes y ambiente
 
 Al cambiar de escena, decide si vale la pena una imagen. Ver [`imagenes.md`](imagenes.md). No toda escena la necesita; la tarjeta local siempre está disponible.
 
-## 11. Cierre de sesión
+## 13. Cierre de sesión
 
 1. Escribe «guardar partida» o usa `bin/mesa guardar`, y pega el resumen.
 2. Corre `bin/mesa retro` y completa `retro.md` con evidencia.

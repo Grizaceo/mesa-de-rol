@@ -1,12 +1,13 @@
 """Sesiones: el traspaso entre narradores, sea cual sea su harness.
 
 Todo vive en partida.json, no en la memoria del harness:
-  sesion  quién narra ahora (harness/modelo) y desde cuándo
+  sesion  quién narra ahora (harness/modelo) y desde cuándo; se cierra al pausar
   pausa   qué quedó pendiente al parar; se borra al registrar el siguiente turno
 """
 
 from __future__ import annotations
 
+import os
 import subprocess
 
 from . import estado, informes
@@ -14,14 +15,19 @@ from . import estado, informes
 
 def retomar(slug: str, narrador: str | None = None) -> str:
     datos = estado.cargar(slug)
-    anterior = datos.get("sesion", {}).get("narrador")
-    datos["sesion"] = {"narrador": narrador or anterior or "sin identificar", "desde": estado.ahora()}
+    anterior = (datos.get("sesion") or {}).get("narrador") or (datos.get("pausa") or {}).get("narrador")
+    # Nunca se hereda el narrador anterior: la bitácora compara narradores y no debe mentir.
+    actual = narrador or os.environ.get("MESA_NARRADOR") or "sin identificar"
+    datos["sesion"] = {"narrador": actual, "desde": estado.ahora()}
     estado.guardar(slug, datos)
-    estado.registrar(slug, {"tipo": "sesion_retomada", "narrador": datos["sesion"]["narrador"], "narrador_anterior": anterior})
+    estado.registrar(slug, {"tipo": "sesion_retomada", "narrador": actual, "narrador_anterior": anterior})
 
     lineas = [f"# Retomar — {datos.get('titulo')} ({slug})", ""]
-    lineas.append(f"Narra ahora: **{datos['sesion']['narrador']}**" + (f" (antes: {anterior})" if anterior and anterior != datos["sesion"]["narrador"] else ""))
-    lineas += ["", informes.contexto(slug)]
+    lineas.append(f"Narra ahora: **{actual}**" + (f" (antes: {anterior})" if anterior and anterior != actual else ""))
+    if actual == "sin identificar":
+        lineas.append('⚠ Identifícate: `bin/mesa retomar --narrador "<harness>/<modelo>"` (o $MESA_NARRADOR).')
+    anteriormente = informes.anteriormente(slug)
+    lineas += ([""] + [anteriormente] if anteriormente else []) + ["", informes.contexto(slug)]
     return "\n".join(lineas)
 
 
@@ -31,11 +37,14 @@ def _git(*args: str) -> subprocess.CompletedProcess:
 
 def pausar(slug: str, pendiente: str, commit: bool = False) -> str:
     datos = estado.cargar(slug)
-    narrador = datos.get("sesion", {}).get("narrador")
+    avisos = informes.revisar(datos)
+    narrador = estado.narrador_actual(slug)
     datos["pausa"] = {"pendiente": pendiente, "cuando": estado.ahora(), "narrador": narrador}
+    datos.pop("sesion", None)  # la sesión termina aquí; el próximo narrador se identifica al retomar
     estado.guardar(slug, datos)
-    estado.registrar(slug, {"tipo": "sesion_pausada", "pendiente": pendiente})
-    salida = [f"Partida en pausa. Al retomar, en cualquier harness: `bin/mesa retomar --narrador \"<harness>/<modelo>\"`."]
+    estado.registrar(slug, {"tipo": "sesion_pausada", "pendiente": pendiente, **({"narrador": narrador} if narrador else {})})
+    salida = [f"⚠ {a}" for a in avisos]
+    salida.append("Partida en pausa. Al retomar, en cualquier harness: `bin/mesa retomar --narrador \"<harness>/<modelo>\"`.")
     if commit:
         salida.append(_commit(slug, pendiente, narrador))
     return "\n".join(salida)

@@ -8,10 +8,23 @@ from __future__ import annotations
 
 import argparse
 import json
+import shlex
 import sys
+from pathlib import Path
 
 from . import dados, estado, harness, imagenes, informes, lecciones, reglas, sesion
 from .texto import con_signo, norm
+
+# Comandos que `turno --cambio` puede aplicar junto con el turno: todos cargan el estado con
+# _cargar y lo cierran con _cerrar, así que dentro de un lote comparten una sola carga y un
+# solo guardado.
+CAMBIOS = (
+    "vida", "condicion", "habilidad", "vendaje", "descanso", "enemigo", "nivel", "escena", "pnj",
+    "pista", "documento", "trama", "misterio", "recurso", "reloj", "regla",
+)
+
+# Lote en curso de `turno --cambio`: {"slug", "datos", "hechos": [(evento, texto)]}.
+_lote: dict | None = None
 
 
 def _bono(texto: str) -> tuple[int, str]:
@@ -27,13 +40,29 @@ def _imprimir(args, evento: dict, texto: str) -> None:
 
 
 def _cargar(args) -> tuple[str, dict]:
+    if _lote is not None:
+        return _lote["slug"], _lote["datos"]
     slug = estado.slug_activo(args.partida)
     return slug, estado.cargar(slug)
 
 
 def _cerrar(args, slug: str, datos: dict, evento: dict, texto: str) -> None:
+    if _lote is not None:
+        _lote["hechos"].append((evento, texto))
+        return
     estado.guardar(slug, datos)
     _imprimir(args, estado.registrar(slug, evento), texto)
+
+
+def _recargar(datos: dict, recargas: set[str], quienes: list[dict] | None = None) -> list[tuple[str, str]]:
+    """Recarga las habilidades gastadas con esas recargas; devuelve (personaje, habilidad)."""
+    recargadas = []
+    for p in datos.get("personajes", []) if quienes is None else quienes:
+        for h in p.get("habilidades", []):
+            if h.get("recarga") in recargas and h.get("disponible") is False:
+                h["disponible"] = True
+                recargadas.append((p["nombre"], h["nombre"]))
+    return recargadas
 
 
 # ---------- partidas ----------
@@ -62,7 +91,18 @@ def c_nueva(args) -> None:
 
 def c_estado(args) -> None:
     slug, datos = _cargar(args)
-    print(json.dumps(datos, ensure_ascii=False, indent=2) if args.json else informes.resumen(datos))
+    if args.json:
+        print(json.dumps(datos, ensure_ascii=False, indent=2))
+    elif args.breve:
+        print("\n".join(informes.ficha_breve(p) for p in datos.get("personajes", [])))
+    else:
+        print(informes.resumen(datos))
+
+
+def c_revisar(args) -> None:
+    slug, datos = _cargar(args)
+    avisos = informes.revisar(datos)
+    print("\n".join(f"⚠ {a}" for a in avisos) if avisos else "Sin avisos.")
 
 
 def c_retomar(args) -> None:
@@ -204,6 +244,47 @@ def c_habilidad(args) -> None:
     _cerrar(args, slug, datos, {"tipo": "habilidad", "quien": ficha["nombre"], "nombre": hab["nombre"], "disponible": hab["disponible"]}, texto)
 
 
+def c_vendaje(args) -> None:
+    slug, datos = _cargar(args)
+    _, ficha = estado.buscar(datos, args.quien)
+    if ficha.get("vendaje_usado"):
+        raise ValueError(f"{ficha['nombre']} ya usó su vendaje: vuelve a tenerlo tras un descanso")
+    en_pie = [e["nombre"] for e in datos.get("enemigos", []) if int(e.get("vida", 0)) > 0]
+    if en_pie:
+        raise ValueError(f"el vendaje es fuera de combate y hay amenazas en escena ({', '.join(en_pie)}); si terminó, `enemigo limpiar`")
+    cambio = reglas.aplicar_vida(ficha, 3)
+    ficha["vendaje_usado"] = True
+    texto = f"Vendaje a {ficha['nombre']}: vida {cambio['antes']} → {cambio['despues']}/{cambio['maximo']}"
+    _cerrar(args, slug, datos, {"tipo": "vendaje", "quien": ficha["nombre"], **cambio}, texto)
+
+
+def c_descanso(args) -> None:
+    slug, datos = _cargar(args)
+    quienes = [estado.buscar(datos, q)[1] for q in args.quien] if args.quien else datos.get("personajes", [])
+    recargas = {"descanso"} if args.clase == "corto" else {"descanso", "escena", "combate", "dia"}
+    lineas = []
+    for p in quienes:
+        cambios = []
+        if args.clase == "largo":
+            vida = reglas.aplicar_vida(p, int(p.get("vida_max", 0)))
+            if vida["despues"] != vida["antes"]:
+                cambios.append(f"vida {vida['antes']} → {vida['despues']}/{vida['maximo']}")
+            for c in list(p.get("condiciones", [])):
+                if norm(c["nombre"]) == "agotamiento":
+                    c["niveles"] = int(c.get("niveles", 1)) - 1
+                    if c["niveles"] <= 0:
+                        p["condiciones"].remove(c)
+                    cambios.append(f"agotamiento {c['niveles']}" if c["niveles"] > 0 else "sin agotamiento")
+        if p.pop("vendaje_usado", None):
+            cambios.append("vendaje disponible")
+        cambios += [f"«{h}» disponible" for _, h in _recargar(datos, recargas, [p])]
+        lineas.append(f"{p['nombre']}: {', '.join(cambios) or 'nada que recuperar'}")
+    texto = f"Descanso {args.clase}.\n" + "\n".join(f"  {l}" for l in lineas)
+    if args.clase == "largo":
+        texto += "\n  (Dormir pide comida: si la gastan, `recurso Raciones --sumar -N`.)"
+    _cerrar(args, slug, datos, {"tipo": "descanso", "clase": args.clase, "quien": [p["nombre"] for p in quienes], "cambios": lineas}, texto)
+
+
 def c_enemigo(args) -> None:
     slug, datos = _cargar(args)
     lista = datos.setdefault("enemigos", [])
@@ -225,7 +306,14 @@ def c_enemigo(args) -> None:
     else:
         lista.clear()
         texto = "Sin amenazas en escena"
-    _cerrar(args, slug, datos, {"tipo": "enemigo", "accion": args.accion, "nombre": args.nombre}, texto)
+    evento = {"tipo": "enemigo", "accion": args.accion, "nombre": args.nombre}
+    if args.accion != "agregar" and not lista:
+        # Sin amenazas, el combate terminó: vuelven las habilidades «por combate».
+        recargadas = [f"{p}: «{h}»" for p, h in _recargar(datos, {"combate"})]
+        if recargadas:
+            evento["recargadas"] = recargadas
+            texto += f". Fin del combate: se recargan {'; '.join(recargadas)}"
+    _cerrar(args, slug, datos, evento, texto)
 
 
 def c_nivel(args) -> None:
@@ -255,14 +343,13 @@ def c_nivel(args) -> None:
 def c_escena(args) -> None:
     slug, datos = _cargar(args)
     escena = datos.setdefault("escena", {})
+    if args.accion == "posicion" and (not args.quien or not (args.donde or args.quitar)):
+        raise ValueError('uso: escena posicion <quien> "<dónde, con metros>" (o --quitar)')
     if args.accion == "nueva":
         escena.clear()
         escena["numero"] = int(datos.get("escenas_jugadas", 0)) + 1
         datos["escenas_jugadas"] = escena["numero"]
-        for p in datos.get("personajes", []):
-            for h in p.get("habilidades", []):
-                if h.get("recarga") == "escena":
-                    h["disponible"] = True
+        _recargar(datos, {"escena"})
     if args.accion in ("nueva", "editar"):
         for campo in ("titulo", "lugar", "hora", "clima", "descripcion"):
             if getattr(args, campo):
@@ -299,6 +386,35 @@ def c_pista(args) -> None:
     slug, datos = _cargar(args)
     datos.setdefault("pistas", []).append({"texto": args.texto, "fuente": args.fuente})
     _cerrar(args, slug, datos, {"tipo": "pista", "texto": args.texto}, f"Pista: {args.texto}")
+
+
+def c_documento(args) -> None:
+    slug, datos = _cargar(args)
+    lista = datos.setdefault("documentos", [])
+    if args.accion == "ver":
+        if not args.titulo:
+            print("\n".join(f"{d['id']} · {informes.NOMBRE_CLASE.get(d.get('clase'), 'Documento')} · {d['titulo']}" for d in lista) or "Sin documentos.")
+            return
+        clave = norm(args.titulo)
+        doc = next((d for d in lista if norm(d["id"]) == clave or norm(d["titulo"]).startswith(clave)), None)
+        if doc is None:
+            raise ValueError(f"no hay documento {args.titulo!r} (mira `documento ver`)")
+        print(informes.documento_chat(doc))
+        return
+    if not args.titulo:
+        raise ValueError('uso: documento agregar "<título>" --texto "..." (o --archivo ruta)')
+    texto = Path(args.archivo).expanduser().read_text(encoding="utf-8") if args.archivo else (args.texto or "")
+    texto = texto.replace("\\n", "\n").strip()
+    if not texto:
+        raise ValueError("el documento necesita --texto o --archivo")
+    numero = max((int(d["id"][1:]) for d in lista if d.get("id", "")[1:].isdigit()), default=0) + 1
+    doc = {
+        "id": f"D{numero}", "titulo": args.titulo, "clase": args.clase, "texto": texto, "fuente": args.fuente or "",
+        "escena": datos.get("escena", {}).get("numero"), "desde": estado.ahora()[:10],
+    }
+    lista.append(doc)
+    evento = {"tipo": "documento", "id": doc["id"], "titulo": doc["titulo"], "clase": doc["clase"]}
+    _cerrar(args, slug, datos, evento, informes.documento_chat(doc))
 
 
 def c_trama(args) -> None:
@@ -354,17 +470,55 @@ def c_reloj(args) -> None:
     _cerrar(args, slug, datos, {"tipo": "reloj", **reloj, "hora": datos.get("escena", {}).get("hora")}, texto)
 
 
-def c_turno(args) -> None:
-    slug = estado.slug_activo(args.partida)
-    datos = estado.cargar(slug)
-    if datos.pop("pausa", None) is not None:
-        estado.guardar(slug, datos)
+def _leer_acciones(items: list[str] | None) -> dict[str, str]:
     acciones = {}
-    for item in args.accion or []:
-        quien, _, que = item.partition("=")
+    for item in items or []:
+        quien, signo, que = item.partition("=")
+        if not signo or not quien.strip() or not que.strip():
+            raise ValueError(f"acción inválida {item!r}: usa «Nombre=lo que declaró»")
         acciones[quien.strip()] = que.strip()
+    return acciones
+
+
+def _parsear_cambio(texto: str) -> argparse.Namespace:
+    partes = shlex.split(texto)
+    if not partes or partes[0] not in CAMBIOS:
+        raise ValueError(f"cambio no permitido: {texto!r} (valen: {', '.join(CAMBIOS)})")
+    try:
+        return _parser().parse_args(partes)
+    except SystemExit:
+        raise ValueError(f"cambio inválido: {texto!r}") from None
+
+
+def c_turno(args) -> None:
+    """Registra el turno y, en el mismo paso, aplica los cambios de estado: todos o ninguno."""
+    global _lote
+    slug = estado.slug_activo(args.partida)
+    acciones = _leer_acciones(args.accion)
+    cambios = [_parsear_cambio(c) for c in args.cambio or []]
+    datos = estado.cargar(slug)
+    pausada = datos.pop("pausa", None) is not None
+    _lote = {"slug": slug, "datos": datos, "hechos": []}
+    try:
+        for cambio in cambios:
+            cambio.funcion(cambio)
+        hechos = _lote["hechos"]
+    finally:
+        _lote = None
+    if hechos or pausada:
+        estado.guardar(slug, datos)
+    registrados = [estado.registrar(slug, evento) for evento, _ in hechos]
     evento = estado.registrar(slug, {"tipo": "turno", "acciones": acciones, "resumen": args.resumen})
-    _imprimir(args, evento, f"Turno {evento['seq']} registrado.")
+    numero = sum(1 for e in estado.leer_eventos(slug) if e.get("tipo") == "turno")
+    avisos = informes.revisar(datos, acciones)
+    if args.json:
+        print(json.dumps({"turno": evento, "cambios": registrados, "avisos": avisos}, ensure_ascii=False, indent=2))
+        return
+    lineas = [texto for _, texto in hechos] + [f"Turno {numero} registrado."]
+    lineas += [f"⚠ {a}" for a in avisos]
+    lineas += ["", "Para la DECISIÓN, lo que cada uno tiene a mano:"]
+    lineas += [f"- {informes.ficha_breve(p)}" for p in datos.get("personajes", [])]
+    print("\n".join(lineas))
 
 
 def c_regla(args) -> None:
@@ -420,11 +574,17 @@ def c_guardar(args) -> None:
 
 def c_leccion(args) -> None:
     if args.accion == "agregar":
-        item = lecciones.agregar(args.texto, args.alcance, args.categoria, args.evidencia, args.origen or "")
+        item = lecciones.agregar(args.texto, args.alcance, args.categoria, args.evidencia, args.origen or "", args.fase)
         print(f"{item['id']} añadida ({item['alcance']}/{item['categoria']}).")
     elif args.accion == "retirar":
         item = lecciones.retirar(args.id, args.motivo)
         print(f"{item['id']} retirada: {args.motivo}")
+    elif args.accion == "incorporar":
+        item = lecciones.incorporar(args.id, args.donde)
+        print(f"{item['id']} incorporada en {args.donde}: ya no se repite en `retomar`.")
+    elif args.accion == "fase":
+        item = lecciones.fijar_fase(args.id, args.fase)
+        print(f"{item['id']}: fase {item.get('fase', 'siempre')}.")
     else:
         items = [i for i in lecciones.leer() if args.todas or i["estado"] == "activa"]
         if args.alcance:
@@ -458,7 +618,9 @@ def _parser() -> argparse.ArgumentParser:
     cmd("partidas", c_partidas, "lista las partidas")
     s = cmd("usar", c_usar, "marca la partida activa"); s.add_argument("slug")
     s = cmd("nueva", c_nueva, "crea una partida desde la plantilla"); s.add_argument("slug"); s.add_argument("--titulo", required=True)
-    cmd("estado", c_estado, "resumen del estado actual")
+    s = cmd("estado", c_estado, "resumen del estado actual")
+    s.add_argument("--breve", action="store_true", help="una línea por personaje: lo que tiene a mano ahora")
+    cmd("revisar", c_revisar, "avisos de consistencia: enemigos en 0, habilidades de combate gastadas, posiciones, narrador")
     s = cmd("retomar", c_retomar, "empieza o retoma la sesión: registra al narrador y muestra dónde quedó la historia")
     s.add_argument("--narrador", help="harness/modelo, p. ej. 'codex/gpt-5.5' o 'claude-code/opus'")
     s = cmd("pausar", c_pausar, "deja el traspaso para el próximo narrador, en cualquier harness")
@@ -488,7 +650,7 @@ def _parser() -> argparse.ArgumentParser:
     s.add_argument("expr"); s.add_argument("--quien"); s.add_argument("--etiqueta"); s.add_argument("--critico", action="store_true")
     s = cmd("prueba", c_prueba, "prueba d20 de atributo o habilidad contra una dificultad")
     s.add_argument("quien"); s.add_argument("atributo", help="fuerza, agilidad, ingenio, corazón o una habilidad (sigilo, percepción...)")
-    s.add_argument("--cd", "--dc", help="número o: muy-facil, facil, media, dificil, muy-dificil, casi-imposible")
+    s.add_argument("--cd", "--dc", help="número o: muy-facil (5), sencilla (10), exigente (15), dificil (20), muy-dificil (25), casi-imposible (30)")
     s.add_argument("--usar", metavar="HABILIDAD", help="gasta una habilidad de la ficha y suma su bono")
     opciones_d20(s)
     s = cmd("ataque", c_ataque, "ataque contra la Defensa de un objetivo; si acierta, aplica el daño")
@@ -506,6 +668,10 @@ def _parser() -> argparse.ArgumentParser:
     s.add_argument("quien"); s.add_argument("accion", choices=["agregar", "quitar"]); s.add_argument("nombre")
     s.add_argument("--efecto"); s.add_argument("--desventaja", help="atributos afectados, separados por coma, o 'todo'/'ataques'")
     s.add_argument("--ventaja-contra", action="store_true"); s.add_argument("--niveles", type=int)
+    s = cmd("vendaje", c_vendaje, "vendaje fuera de combate: +3 de vida, una vez por personaje entre descansos")
+    s.add_argument("quien")
+    s = cmd("descanso", c_descanso, "descanso corto (recarga lo «por descanso») o largo (toda la vida, −1 agotamiento, recarga todo)")
+    s.add_argument("clase", choices=["corto", "largo"]); s.add_argument("--quien", action="append", help="solo estos personajes (por defecto, todos)")
     s = cmd("habilidad", c_habilidad, "marca una habilidad como gastada o recargada")
     s.add_argument("quien"); s.add_argument("nombre"); g = s.add_mutually_exclusive_group(required=True)
     g.add_argument("--usar", action="store_true"); g.add_argument("--recargar", action="store_true")
@@ -527,6 +693,10 @@ def _parser() -> argparse.ArgumentParser:
     s.add_argument("nombre"); s.add_argument("--rol"); s.add_argument("--actitud", choices=["amistosa", "indiferente", "hostil"])
     s.add_argument("--estado"); s.add_argument("--nota")
     s = cmd("pista", c_pista, "anota una pista descubierta"); s.add_argument("texto"); s.add_argument("--fuente")
+    s = cmd("documento", c_documento, "documento del mundo (carta, telegrama, periódico...): se entrega en el chat y queda en el visor")
+    s.add_argument("accion", choices=["agregar", "ver"]); s.add_argument("titulo", nargs="?", help="título (o id al ver)")
+    s.add_argument("--clase", choices=informes.CLASES_DOCUMENTO, default="nota"); s.add_argument("--texto", help="texto; \\n separa líneas")
+    s.add_argument("--archivo", help="lee el texto de un archivo"); s.add_argument("--fuente", help="dónde se encontró o quién lo dio")
     s = cmd("trama", c_trama, "abre, cambia o cierra una trama"); s.add_argument("nombre")
     s.add_argument("--estado", choices=["activa", "latente", "cerrada", "sin-abrir"]); s.add_argument("--nota")
     s = cmd("misterio", c_misterio, "pregunta abierta que los jugadores conocen"); s.add_argument("texto"); s.add_argument("--resolver", action="store_true")
@@ -534,8 +704,10 @@ def _parser() -> argparse.ArgumentParser:
     s.add_argument("clave"); s.add_argument("valor", nargs="?"); s.add_argument("--sumar", type=int)
     s = cmd("reloj", c_reloj, "día, hora y plazos"); s.add_argument("--dia", type=int); s.add_argument("--hora")
     s.add_argument("--plazo", action="append"); s.add_argument("--quitar-plazo", action="append")
-    s = cmd("turno", c_turno, "registra lo que declaró cada jugador y lo que pasó")
+    s = cmd("turno", c_turno, "registra lo que declaró cada jugador y lo que pasó, y aplica los cambios de estado en el mismo paso")
     s.add_argument("--accion", action="append", metavar="NOMBRE=TEXTO"); s.add_argument("--resumen", required=True)
+    s.add_argument("--cambio", action="append", metavar="'COMANDO ARGS'",
+                   help=f"cambio de estado con la sintaxis de la CLI, p. ej. 'pista \"Huellas frescas\" --fuente Ana'; se aplican todos o ninguno ({', '.join(CAMBIOS)})")
     s = cmd("regla", c_regla, "añade una regla de la casa acordada en la mesa"); s.add_argument("texto")
     s = cmd("nota", c_nota, "nota libre en la bitácora"); s.add_argument("texto")
 
@@ -555,18 +727,29 @@ def _parser() -> argparse.ArgumentParser:
     lsub = s.add_subparsers(dest="accion", required=True)
     e = lsub.add_parser("agregar"); e.add_argument("texto"); e.add_argument("--alcance", required=True)
     e.add_argument("--categoria", required=True, choices=lecciones.CATEGORIAS); e.add_argument("--evidencia", required=True); e.add_argument("--origen")
+    e.add_argument("--fase", choices=lecciones.FASES, help="sesion-cero: solo antes de la primera escena")
     e = lsub.add_parser("listar"); e.add_argument("--alcance"); e.add_argument("--todas", action="store_true")
     e = lsub.add_parser("retirar"); e.add_argument("id"); e.add_argument("--motivo", required=True)
+    e = lsub.add_parser("incorporar", help="la lección ya está en AGENTS.md (u otro texto que el director lee siempre)")
+    e.add_argument("id"); e.add_argument("--donde", required=True)
+    e = lsub.add_parser("fase", help="limita la lección a una fase: sesion-cero | siempre"); e.add_argument("id")
+    e.add_argument("fase", choices=lecciones.FASES + ("siempre",))
     cmd("retro", c_retro, "estadísticas de la partida y plantilla de retrospectiva")
     s = cmd("servir", c_servir, "abre el visor local"); s.add_argument("--host", default="127.0.0.1"); s.add_argument("--puerto", type=int, default=8765)
     return p
 
 
-def main(argv: list[str] | None = None) -> int:
+def main(argv: list[str] | None = None, prohibidos: frozenset[str] = frozenset()) -> int:
     args = _parser().parse_args(argv)
+    if args.comando in prohibidos:
+        print(f"error: `{args.comando}` no se puede usar desde aquí", file=sys.stderr)
+        return 1
     try:
         args.funcion(args)
     except (ValueError, FileNotFoundError, FileExistsError, RuntimeError) as e:
         print(f"error: {e}", file=sys.stderr)
+        return 1
+    except OSError as e:  # red caída, permisos, disco: un error legible, no un traceback
+        print(f"error de sistema o de red: {e}", file=sys.stderr)
         return 1
     return 0

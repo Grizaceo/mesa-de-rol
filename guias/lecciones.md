@@ -30,6 +30,18 @@ Cada lección declara a qué partidas aplica:
 
 `bin/mesa contexto` incluye solo las lecciones **activas** cuyo alcance corresponde a la partida.
 
+## Estados y fases
+
+| Estado | Qué significa | Cómo |
+|---|---|---|
+| `activa` | Se inyecta al director | `leccion agregar` |
+| `incorporada` | Ya está escrita en `AGENTS.md` (u otro texto que el director lee siempre): repetirla solo mete ruido | `leccion incorporar L001 --donde "AGENTS.md § En cada turno"` |
+| `retirada` | Dejó de valer | `leccion retirar L007 --motivo "..."` |
+
+Una lección puede tener **fase** `sesion-cero`: solo se inyecta mientras la partida no ha jugado
+ninguna escena (`leccion fase L009 sesion-cero`; `leccion fase L009 siempre` la devuelve).
+`leccion listar --todas` muestra todas, con su estado.
+
 ## Ciclo de vida
 
 1. **Durante el juego:** cuando los jugadores corrigen algo («no pases de turno», «en metros»), se registra con `bin/mesa regla` si es una regla, o queda en la bitácora con `bin/mesa nota`.

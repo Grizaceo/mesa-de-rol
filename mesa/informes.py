@@ -1,13 +1,25 @@
-"""Textos que genera la mesa: estado, contexto del director, guardado y retrospectiva."""
+"""Textos que genera la mesa: estado, contexto del director, avisos, guardado y retrospectiva."""
 
 from __future__ import annotations
 
+import os
 from collections import Counter
 from datetime import datetime
 
 from . import estado, lecciones
 from .reglas import NOMBRE_ATRIBUTO
-from .texto import con_signo
+from .texto import con_signo, norm
+
+CLASES_DOCUMENTO = ("carta", "telegrama", "periodico", "nota", "cartel", "informe", "otro")
+NOMBRE_CLASE = {
+    "carta": "Carta", "telegrama": "Telegrama", "periodico": "Periódico", "nota": "Nota",
+    "cartel": "Cartel", "informe": "Informe", "otro": "Documento",
+}
+_RECARGA = {"escena": "una por escena", "combate": "una por combate", "descanso": "una por descanso", "dia": "una por día"}
+_VUELVE = {
+    "escena": "vuelve en la próxima escena", "combate": "vuelve al terminar el combate",
+    "descanso": "vuelve tras un descanso", "dia": "vuelve mañana",
+}
 
 
 def _ficha(p: dict) -> list[str]:
@@ -29,6 +41,90 @@ def _ficha(p: dict) -> list[str]:
     if p.get("condiciones"):
         lineas.append(f"  - Condiciones: {'; '.join(c['nombre'] + ': ' + c.get('efecto', '') for c in p['condiciones'])}")
     return lineas
+
+
+def _efecto_breve(c: dict) -> str:
+    afectados = [norm(a) for a in c.get("desventaja", [])]
+    if "todo" in afectados:
+        return "desventaja en todo"
+    frases = [" y ".join(NOMBRE_ATRIBUTO[a] for a in afectados if a in NOMBRE_ATRIBUTO)]
+    frases = ["en " + frases[0]] if frases[0] else []
+    if "ataques" in afectados:
+        frases.append("al atacar")
+    if frases:
+        return "desventaja " + " y ".join(frases)
+    if c.get("penalizador_por_nivel"):
+        return f"{con_signo(-int(c['penalizador_por_nivel']) * int(c.get('niveles', 1)))} a toda prueba d20"
+    return c.get("efecto", "").split(". ")[0].rstrip(".")
+
+
+def ficha_breve(p: dict) -> str:
+    """Una línea con lo que el personaje tiene a mano ahora: para la DECISIÓN de cada turno."""
+    partes = [f"{p['nombre']} ({p.get('vida')}/{p.get('vida_max')})"]
+    for h in p.get("habilidades", []):
+        if h.get("disponible", True):
+            extra = ", ".join(x for x in (con_signo(int(h["bono"])) if h.get("bono") else "", _RECARGA.get(h.get("recarga"), "")) if x)
+            partes.append(f"«{h['nombre']}» disponible" + (f" ({extra})" if extra else ""))
+        else:
+            partes.append(f"«{h['nombre']}» gastada" + (f" ({_VUELVE[h['recarga']]})" if h.get("recarga") in _VUELVE else ""))
+    partes += [f"{c['nombre']}: {_efecto_breve(c)}" for c in p.get("condiciones", [])]
+    oficio = p.get("oficio") or {}
+    if oficio.get("aplica"):
+        partes.append(f"Oficio {con_signo(int(oficio.get('bono', 2)))}: {oficio['aplica']}")
+    if p.get("vendaje_usado"):
+        partes.append("vendaje ya usado")
+    return " · ".join(partes)
+
+
+def revisar(datos: dict, acciones: dict | None = None) -> list[str]:
+    """Avisos de consistencia: lo que el narrador suele olvidar. Avisan, nunca bloquean."""
+    avisos = []
+    personajes = datos.get("personajes", [])
+    if acciones is not None:
+        claves = [norm(k) for k in acciones]
+        for p in personajes:
+            nombres = {norm(p.get("nombre", "")), norm(p.get("id", ""))} - {""}
+            if int(p.get("vida", 0)) > 0 and not any(c.startswith(n) or n.startswith(c) for c in claves for n in nombres):
+                avisos.append(f"Sin acción de {p['nombre']} en este turno: si no fue a propósito, pregúntale antes de avanzar la escena.")
+    enemigos = datos.get("enemigos", [])
+    for e in enemigos:
+        if int(e.get("vida", 0)) <= 0:
+            avisos.append(f"{e['nombre']} está en 0 de vida y sigue en escena: `enemigo quitar \"{e['nombre']}\"` si ya no cuenta.")
+    if not any(int(e.get("vida", 0)) > 0 for e in enemigos):
+        for p in personajes:
+            for h in p.get("habilidades", []):
+                if h.get("recarga") == "combate" and h.get("disponible") is False:
+                    avisos.append(f"«{h['nombre']}» de {p['nombre']} sigue gastada sin amenazas en pie: si el combate terminó, `enemigo limpiar` la recarga.")
+    posiciones = {norm(x.get("quien", "")) for x in datos.get("escena", {}).get("posiciones") or []}
+    if posiciones:
+        for p in personajes:
+            if not {norm(p.get("nombre", "")), norm(p.get("id", ""))} & posiciones:
+                avisos.append(f"{p['nombre']} no tiene posición en la escena: `escena posicion {p['nombre']} \"<dónde, con metros>\"`.")
+    narrador = os.environ.get("MESA_NARRADOR") or (datos.get("sesion") or {}).get("narrador")
+    if not narrador or narrador == "sin identificar":
+        avisos.append('No hay narrador identificado: `bin/mesa retomar --narrador "<harness>/<modelo>"`.')
+    return avisos
+
+
+def documento_chat(doc: dict) -> str:
+    """El documento como bloque citado, listo para pegar en el chat."""
+    lineas = [f"> **{NOMBRE_CLASE.get(doc.get('clase'), 'Documento')} · {doc['titulo']}**", ">"]
+    lineas += [f"> {l}" if l.strip() else ">" for l in doc["texto"].splitlines()]
+    if doc.get("fuente"):
+        lineas += [">", f"> _{doc['fuente']}_"]
+    lineas.append(f"\n({doc['id']}: queda también en el visor, pestaña Documentos)")
+    return "\n".join(lineas)
+
+
+def anteriormente(slug: str, n: int = 3) -> str:
+    """Borrador de «Anteriormente…» con los últimos resúmenes de turno, para abrir la sesión."""
+    turnos = [e for e in estado.leer_eventos(slug) if e.get("tipo") == "turno"]
+    if not turnos:
+        return ""
+    primero = len(turnos) - len(turnos[-n:]) + 1
+    lineas = ["## Anteriormente (borrador: ábrelo con tu voz, en 4 líneas como máximo)"]
+    lineas += [f"- Turno {i}: {e.get('resumen', '')}" for i, e in enumerate(turnos[-n:], start=primero)]
+    return "\n".join(lineas) + "\n"
 
 
 def resumen(datos: dict) -> str:
@@ -63,6 +159,10 @@ def resumen(datos: dict) -> str:
             lineas.append(f"- **{n['nombre']}** ({n.get('rol', '')}; {n.get('actitud', 'indiferente')}): {n.get('estado', '')} {nota}".rstrip())
     if datos.get("pistas"):
         lineas += ["", "## Pistas"] + [f"- {x['texto']}" for x in datos["pistas"]]
+    if datos.get("documentos"):
+        lineas += ["", "## Documentos"] + [
+            f"- {d['id']} · {NOMBRE_CLASE.get(d.get('clase'), 'Documento')} · «{d['titulo']}»" for d in datos["documentos"]
+        ]
     if datos.get("tramas"):
         lineas += ["", "## Tramas"] + [f"- {t['nombre']} [{t['estado']}]: {t.get('nota', '')}" for t in datos["tramas"]]
     if datos.get("misterios"):

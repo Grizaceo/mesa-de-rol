@@ -1,10 +1,11 @@
 // Visor de la mesa: sondea el servidor local y pinta escena, dados, fichas y mundo.
-const app = { slug: null, firmaEstado: "", ultimoSeq: 0, datos: null, eventos: [], pestana: "pnj" };
+const app = { slug: null, firmaEstado: "", ultimoSeq: 0, datos: null, eventos: [], pestana: "pnj", documentoNuevo: null };
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const signo = (n) => (n >= 0 ? `+${n}` : `${n}`);
 const ATRIBUTOS = { fuerza: "Fuerza", agilidad: "Agilidad", ingenio: "Ingenio", corazon: "Corazón" };
 const ES_TIRADA = new Set(["prueba", "ataque", "tirada", "dano", "suerte"]);
+const CLASE_DOCUMENTO = { carta: "Carta", telegrama: "Telegrama", periodico: "Periódico", nota: "Nota", cartel: "Cartel", informe: "Informe", otro: "Documento" };
 const MOVIMIENTO_REDUCIDO = matchMedia("(prefers-reduced-motion: reduce)").matches;
 
 async function api(ruta) {
@@ -170,7 +171,8 @@ function pintarFicha(p) {
   const afectados = new Set((p.condiciones || []).flatMap((c) => (c.desventaja || [])));
   const atributos = Object.entries(p.atributos || {}).map(([k, v]) => `
     <li><span class="attr-nombre">${ATRIBUTOS[k] || k}</span><span class="attr-valor">${signo(v)}</span>${afectados.has(k) || afectados.has("todo") ? '<span class="attr-marca">desventaja</span>' : ""}</li>`).join("");
-  const habilidades = (p.habilidades || []).map((h) => `<span class="etiqueta${h.disponible === false ? " gastada" : ""}" title="${esc(h.texto)}">${esc(h.nombre)} · ${h.disponible === false ? "gastada" : "disponible"}</span>`).join("");
+  const habilidades = (p.habilidades || []).map((h) => `<span class="etiqueta${h.disponible === false ? " gastada" : ""}" title="${esc(h.texto)}">${esc(h.nombre)} · ${h.disponible === false ? "gastada" : "disponible"}</span>`).join("")
+    + (p.vendaje_usado ? '<span class="etiqueta gastada" title="Vuelve tras un descanso">Vendaje · usado</span>' : "");
   const condiciones = (p.condiciones || []).map((c) => `<span class="etiqueta condicion" title="${esc(c.efecto)}">${esc(c.nombre)}${c.niveles > 1 ? ` ${c.niveles}` : ""}: ${esc(c.efecto || "")}</span>`).join("");
   const equipo = (p.equipo || []).map((x) => `<li>${esc(x.nombre)}${x.dano ? ` — <b>${esc(x.dano)}</b>${x.distancia ? " a distancia" : ""}` : ""}${x.texto ? ` <span class="texto-3">(${esc(x.texto)})</span>` : ""}</li>`).join("");
   const rasgos = (p.rasgos || []).map((r) => `<li><b>${esc(r.nombre)}:</b> ${esc(r.texto)}</li>`).join("");
@@ -199,7 +201,7 @@ function pintarEnemigos(lista) {
 }
 
 const PESTANAS = [
-  ["pnj", "PNJ"], ["pistas", "Pistas"], ["tramas", "Tramas"], ["misterios", "Preguntas"],
+  ["pnj", "PNJ"], ["pistas", "Pistas"], ["documentos", "Documentos"], ["tramas", "Tramas"], ["misterios", "Preguntas"],
   ["recursos", "Recursos"], ["reglas", "Reglas de la casa"], ["bitacora", "Bitácora"],
 ];
 function pintarPestanas() {
@@ -227,6 +229,14 @@ function pintarMundo() {
     case "pistas":
       html = (d.pistas || []).length ? `<ol class="lista">${d.pistas.map((p) => `<li>${esc(p.texto)}${p.fuente ? ` <span class="fuente">— ${esc(p.fuente)}</span>` : ""}</li>`).join("")}</ol>` : vacio;
       break;
+    case "documentos":
+      html = (d.documentos || []).length ? `<div class="documentos">${[...d.documentos].reverse().map((doc) => `
+        <article class="documento${doc.id === app.documentoNuevo ? " nuevo" : ""}" data-clase="${esc(doc.clase)}" data-id="${esc(doc.id)}">
+          <header><span class="clase">${esc(CLASE_DOCUMENTO[doc.clase] || "Documento")}</span><h3>${esc(doc.titulo)}</h3></header>
+          <p class="cuerpo">${esc(doc.texto)}</p>
+          <footer>${[doc.fuente, doc.escena != null ? `escena ${doc.escena}` : ""].filter(Boolean).map(esc).join(" · ")}</footer>
+        </article>`).join("")}</div>` : vacio;
+      break;
     case "tramas":
       html = (d.tramas || []).length ? `<ul class="lista">${d.tramas.map((t) => `<li><b>${esc(t.nombre)}</b><span class="estado-trama">${esc(t.estado)}</span>${t.nota ? `<br><span class="texto-2">${esc(t.nota)}</span>` : ""}</li>`).join("")}</ul>` : vacio;
       break;
@@ -240,11 +250,12 @@ function pintarMundo() {
       html = (d.reglas_casa || []).length ? `<ul class="lista">${d.reglas_casa.map((r) => `<li><b>${esc(r.id)}</b> ${esc(r.texto)} <span class="fuente">(${esc(r.desde || "")})</span></li>`).join("")}</ul>` : vacio;
       break;
     case "bitacora": {
-      const items = app.eventos.filter((e) => ["turno", "nota", "escena", "regla", "pista"].includes(e.tipo)).slice(-60).reverse();
+      const items = app.eventos.filter((e) => ["turno", "nota", "escena", "regla", "pista", "documento"].includes(e.tipo)).slice(-60).reverse();
       html = items.length ? `<ol class="bitacora">${items.map((e) => {
         const cuando = `<div class="cuando">#${e.seq} · ${esc((e.ts || "").replace("T", " ").slice(0, 16))} · ${esc(e.tipo)}</div>`;
         if (e.tipo === "turno") return `<li>${cuando}${Object.entries(e.acciones || {}).map(([k, v]) => `<p class="accion"><b>${esc(k)}:</b> ${esc(v)}</p>`).join("")}<p class="resumen">${esc(e.resumen)}</p></li>`;
         if (e.tipo === "escena") return `<li>${cuando}<p class="resumen">Escena ${e.numero}: ${esc(e.titulo)} — ${esc(e.lugar || "")}</p></li>`;
+        if (e.tipo === "documento") return `<li>${cuando}<p>${esc(CLASE_DOCUMENTO[e.clase] || "Documento")}: «${esc(e.titulo)}»</p></li>`;
         return `<li>${cuando}<p>${esc(e.texto || "")}</p></li>`;
       }).join("")}</ol>` : vacio;
       break;
@@ -309,8 +320,20 @@ async function sondear() {
       pintarHistorial();
       const tirada = eventos.filter((e) => ES_TIRADA.has(e.tipo)).at(-1);
       if (tirada) pintarBandeja(tirada, true);
+      const documento = eventos.filter((e) => e.tipo === "documento").at(-1);
+      if (documento) {
+        // Un documento nuevo se pone delante: es lo que los personajes tienen en las manos.
+        app.pestana = "documentos";
+        app.documentoNuevo = documento.id;
+        app.firmaEstado = "";
+      }
     }
     await cargarEstado();
+    if (app.documentoNuevo && app.pestana === "documentos") {
+      pintarPestanas();
+      document.querySelector(`.documento[data-id="${CSS.escape(app.documentoNuevo)}"]`)?.scrollIntoView({ block: "nearest", behavior: MOVIMIENTO_REDUCIDO ? "auto" : "smooth" });
+      app.documentoNuevo = null;
+    }
     conexion(true);
   } catch {
     conexion(false);

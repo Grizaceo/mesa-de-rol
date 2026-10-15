@@ -109,6 +109,16 @@ class TestCombate(unittest.TestCase):
             e = reglas.ataque(self.d, ficha(self.d, "Jualjin"), self.maton, arma="bichero")
         self.assertEqual(e["modo"], "ventaja")
 
+    def test_quien_esta_en_0_o_incapacitado_no_ataca(self):
+        with dados_fijos(20, 8, 7):
+            reglas.ataque(self.d, ficha(self.d, "Jualjin"), self.maton, arma="bichero")
+        with self.assertRaisesRegex(ValueError, "0 de vida"):
+            reglas.ataque(self.d, self.maton, ficha(self.d, "Crisljin"))
+        crisljin = ficha(self.d, "Crisljin")
+        crisljin["condiciones"].append(reglas.condicion_de_catalogo("aturdido"))
+        with self.assertRaisesRegex(ValueError, "Aturdido"):
+            reglas.ataque(self.d, crisljin, self.maton)
+
     def test_vida_no_sale_de_rango_y_se_recupera(self):
         j = ficha(self.d, "Jualjin")
         self.assertEqual(reglas.aplicar_vida(j, -99)["despues"], 0)

@@ -24,9 +24,9 @@ cómo arranca cada harness, en `guias/harnesses.md`.
    - las reglas de la casa,
    - el estado y los últimos eventos.
 
-   Para otra partida, añade `-p <slug>`; `bin/mesa partidas` las lista. **Cumple las lecciones**: son correcciones reales de jugadores.
+   Para otra partida, añade `-p <slug>`; `bin/mesa partidas` las lista. **Cumple las lecciones**: son correcciones reales de jugadores. Las que ya están escritas en este contrato se marcan como incorporadas y no se repiten.
 2. Lee `partidas/<slug>/biblia.md` (estilo, mundo, PNJ, formato) y `partidas/<slug>/director.md` (secretos y relojes). Consulta `reglas/d20-simple.md` cuando una regla no esté clara.
-3. Continúa **exactamente** desde «Retomar aquí», sin resumir de más y sin avanzar sin la acción de cada jugador.
+3. Abre con **«Anteriormente…»**: como máximo 4 líneas, con tu voz, a partir del borrador que trae `retomar`. Luego continúa **exactamente** desde «Retomar aquí», sin avanzar sin la acción de cada jugador.
 4. Si tu harness puede dejar procesos en segundo plano, ofrece el visor: `bin/mesa servir` en `http://127.0.0.1:8765`.
 
 ## En cada turno
@@ -36,24 +36,42 @@ cómo arranca cada harness, en `guias/harnesses.md`.
    - Sin riesgo (mirar, recordar): tira directo.
    - Con riesgo: anuncia la apuesta (atributo y habilidad, CD, probabilidad, qué se gana y qué se pierde, ventaja o desventaja y por qué) y **espera confirmación**.
 3. **Tira siempre con la herramienta**, nunca de cabeza:
-   - `bin/mesa prueba <quien> <atributo|habilidad> --cd <n|facil|media|dificil> [--ventaja "motivo"] [--desventaja "motivo"] [--oficio] [--usar "Habilidad"] [--bono 2:fuente] --etiqueta "qué intenta"`
+   - `bin/mesa prueba <quien> <atributo|habilidad> --cd <n|sencilla|exigente|dificil> [--ventaja "motivo"] [--desventaja "motivo"] [--oficio] [--usar "Habilidad"] [--bono 2:fuente] --etiqueta "qué intenta"`
    - `bin/mesa ataque <quien> <objetivo> [--arma ...] [--cobertura media|tres-cuartos]` (aplica el daño solo)
    - `bin/mesa dano`, `bin/mesa tirar 2d6+1`, `bin/mesa suerte 30 --etiqueta "¿...?"`
 
    Por MCP son las herramientas `prueba`, `ataque`, `tirar` y `suerte`. Copia el resultado que devuelven en **RESULTADO** y nunca lo cambies.
-4. **Actualiza el estado** antes de responder (por CLI, o por la herramienta MCP `comando`):
-   - **Vida, condiciones y habilidades:** `vida`, `condicion`, `habilidad`.
-   - **Mundo:** `pnj`, `pista`, `trama`, `misterio`, `recurso`, `reloj`.
-   - **Escena:** `escena posicion <quien> "<dónde, con metros>"`, o `escena nueva ...` al cambiar de escena (recarga las habilidades «por escena»).
+4. **Registra el turno y actualiza el estado en un solo paso**, antes de responder:
+
+   ```bash
+   bin/mesa turno --accion "Nombre=lo que declaró" ... --resumen "qué pasó" \
+     --cambio 'pista "<qué descubrieron>" --fuente <quién>' \
+     --cambio 'escena posicion <quien> "<dónde, a cuántos metros de qué>"'
+   ```
+
+   Por MCP es la herramienta `turno`, con `cambios` como listas de argumentos. Las acciones van con las palabras de los jugadores, y los cambios se aplican todos o ninguno. Cada `--cambio` es un comando de la CLI:
+   - **Vida, condiciones y habilidades:** `vida`, `condicion`, `habilidad`, `vendaje`, `descanso corto|largo`.
+   - **Mundo:** `pnj`, `pista`, `documento`, `trama`, `misterio`, `recurso`, `reloj`, `enemigo`.
+   - **Escena:** `escena posicion <quien> "<dónde, con metros>"`, o `escena nueva ...` al cambiar de escena (recarga las habilidades «por escena»). `enemigo limpiar` cierra el combate y recarga las «por combate».
    - **Reglas nuevas:** `regla "..."` cuando la mesa acuerda una, indicando si es retroactiva.
-   - **El turno:** `turno --accion "Nombre=lo que declaró" ... --resumen "qué pasó"` (MCP: `turno`), con las palabras de los jugadores.
-5. **Responde** con el formato de la biblia, normalmente ESCENA / RESULTADO / ESTADO / DECISIÓN, de 150 a 300 palabras, y termina con una pregunta para cada jugador.
+
+   `turno` devuelve **avisos ⚠** (falta la acción de alguien, un enemigo en 0 sigue en escena, una habilidad sin recargar): atiéndelos antes de responder. Cualquier comando suelto también sirve (CLI, o MCP `comando`), y `bin/mesa revisar` repite los avisos.
+5. **Responde** con el formato de la biblia, normalmente ESCENA / RESULTADO / ESTADO / DECISIÓN, de 150 a 300 palabras. En la DECISIÓN van:
+   - una línea por personaje con lo que tiene a mano (la da `turno`; también `estado --breve`);
+   - dos o tres ideas y «o cualquier otra acción»;
+   - una pregunta para cada jugador.
 
 ## Secretos y lo que ven los jugadores
 
 - `partida.json` es **público**: el visor lo muestra entero. Ahí solo va lo que los personajes saben.
 - Los secretos, las consecuencias en marcha y lo que aún no se decidió van en `director.md`. Mantenlo al día al decidir algo, porque es la memoria del próximo narrador.
 - Al decidir un secreto, respeta lo ya jugado: la bitácora (`eventos.jsonl`) y las pistas mandan.
+
+## Documentos del mundo
+
+- Cuando los personajes reciben o encuentran algo escrito (una carta, un telegrama, un periódico, una nota, un cartel), entrégalo como documento: `bin/mesa documento agregar "<título>" --clase carta --texto "..." --fuente "<dónde se encontró>"`. Imprime un bloque citado: pégalo tal cual en el chat. El visor lo muestra en la pestaña Documentos.
+- Es público: regístralo solo cuando los personajes ya lo tienen. Lo que aún no saben sigue en `director.md`.
+- Es un buen premio para un 20 natural o para una investigación bien llevada.
 
 ## Imágenes (opcional)
 
@@ -80,6 +98,7 @@ Al empezar una escena nueva:
    - Corre `bin/mesa retro` y escribe o actualiza `partidas/<slug>/retro.md` con evidencia.
    - Propón de 3 a 6 lecciones con alcance, categoría y evidencia.
    - **Agrega solo las que los jugadores aprueben** (`leccion agregar`).
+   - Si una lección ya quedó escrita en este contrato, márcala con `leccion incorporar <id> --donde "AGENTS.md § ..."`.
 
 ## Historias nuevas
 

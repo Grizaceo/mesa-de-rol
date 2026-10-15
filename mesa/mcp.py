@@ -13,13 +13,14 @@ from __future__ import annotations
 
 import io
 import json
+import shlex
 import sys
 from contextlib import redirect_stderr, redirect_stdout
 
 from . import __version__, cli
 
 VERSIONES = ("2025-06-18", "2025-03-26", "2024-11-05")
-PROHIBIDOS = {"servir"}  # bloquearía el servidor
+PROHIBIDOS = frozenset({"servir"})  # bloquearía el servidor
 
 INSTRUCCIONES = (
     "Herramientas de la mesa de rol. Eres el director de juego: sigue AGENTS.md del repo. "
@@ -53,8 +54,8 @@ HERRAMIENTAS = [
     {
         "name": "estado",
         "title": "Estado de la partida",
-        "description": "Resumen legible del estado: escena, posiciones, fichas, recursos, PNJ, pistas y tramas.",
-        "inputSchema": {"type": "object", "properties": {"partida": _PARTIDA}},
+        "description": "Resumen legible del estado: escena, posiciones, fichas, recursos, PNJ, pistas, documentos y tramas. Con breve=true, una línea por personaje con lo que tiene a mano (para la DECISIÓN).",
+        "inputSchema": {"type": "object", "properties": {"breve": {"type": "boolean"}, "partida": _PARTIDA}},
     },
     {
         "name": "prueba",
@@ -63,7 +64,7 @@ HERRAMIENTAS = [
         "inputSchema": {"type": "object", "required": ["quien", "atributo"], "properties": {
             "quien": {"type": "string"},
             "atributo": {"type": "string"},
-            "cd": {"type": ["string", "integer"], "description": "Número o: muy-facil, facil, media, dificil, muy-dificil, casi-imposible."},
+            "cd": {"type": ["string", "integer"], "description": "Número o: muy-facil (5), sencilla (10), exigente (15), dificil (20), muy-dificil (25), casi-imposible (30)."},
             "ventaja": _MOTIVO, "desventaja": _MOTIVO,
             "oficio": {"type": "boolean", "description": "Suma el bono de oficio si la acción cae en el oficio del personaje."},
             "usar": {"type": "string", "description": "Habilidad de la ficha que se gasta y suma su bono."},
@@ -101,10 +102,25 @@ HERRAMIENTAS = [
     {
         "name": "turno",
         "title": "Registrar turno",
-        "description": "Registra lo que declaró cada jugador (con sus palabras) y lo que pasó. Hazlo en cada turno.",
+        "description": (
+            "Registra lo que declaró cada jugador (con sus palabras) y lo que pasó, y en el mismo paso aplica los cambios "
+            "de estado (todos o ninguno). Devuelve avisos de consistencia y una línea por personaje para la DECISIÓN. "
+            "Hazlo en cada turno, antes de responder."
+        ),
         "inputSchema": {"type": "object", "required": ["resumen"], "properties": {
             "acciones": {"type": "object", "additionalProperties": {"type": "string"}, "description": "{nombre del personaje: lo que declaró}"},
-            "resumen": {"type": "string"}, "partida": _PARTIDA}},
+            "resumen": {"type": "string"},
+            "cambios": {
+                "type": "array",
+                "items": {"type": "array", "items": {"type": "string"}, "minItems": 1},
+                "description": (
+                    "Cambios de estado como argumentos de la CLI, p. ej. [[\"pista\", \"Huellas frescas\", \"--fuente\", \"Ana\"], "
+                    "[\"pnj\", \"Anya\", \"--nota\", \"...\"], [\"escena\", \"posicion\", \"Crisljin\", \"en la popa, a 4 m\"]]. "
+                    "Valen: vida, condicion, habilidad, vendaje, descanso, enemigo, nivel, escena, pnj, pista, documento, trama, "
+                    "misterio, recurso, reloj, regla."
+                ),
+            },
+            "partida": _PARTIDA}},
     },
     {
         "name": "pausar",
@@ -118,8 +134,8 @@ HERRAMIENTAS = [
         "title": "Otro comando de la mesa",
         "description": (
             "Cualquier otro comando de la CLI `mesa`, como lista de argumentos. Comandos: vida, condicion, habilidad, "
-            "enemigo, nivel, escena, pnj, pista, trama, misterio, recurso, reloj, regla, nota, imagen, guardar, retro, "
-            "leccion, partidas, usar, nueva. Ejemplos: [\"vida\", \"Jualjin\", \"-3\"], "
+            "vendaje, descanso, enemigo, nivel, escena, pnj, pista, documento, trama, misterio, recurso, reloj, regla, "
+            "nota, revisar, imagen, guardar, retro, leccion, partidas, usar, nueva. Ejemplos: [\"vida\", \"Jualjin\", \"-3\"], "
             "[\"escena\", \"posicion\", \"Crisljin\", \"en la popa, a 4 m\"], [\"pnj\", \"Anya\", \"--nota\", \"...\"]."
         ),
         "inputSchema": {"type": "object", "required": ["args"], "properties": {
@@ -143,7 +159,7 @@ def construir_argumentos(nombre: str, a: dict) -> list[str]:
     elif nombre == "contexto":
         args = ["contexto"] + (["--completo"] if a.get("completo") else []) + (["--eventos", str(a["eventos"])] if a.get("eventos") else [])
     elif nombre == "estado":
-        args = ["estado"]
+        args = ["estado"] + (["--breve"] if a.get("breve") else [])
     elif nombre in ("prueba", "ataque"):
         args = [nombre, a["quien"], a["atributo"] if nombre == "prueba" else a["objetivo"]]
         for campo in ("cd", "usar", "arma", "atributo", "cobertura", "etiqueta"):
@@ -167,12 +183,12 @@ def construir_argumentos(nombre: str, a: dict) -> list[str]:
         args = ["turno", "--resumen", a["resumen"]]
         for quien, que in (a.get("acciones") or {}).items():
             args += ["--accion", f"{quien}={que}"]
+        for cambio in a.get("cambios") or []:
+            args += ["--cambio", cambio if isinstance(cambio, str) else shlex.join(str(x) for x in cambio)]
     elif nombre == "pausar":
         args = ["pausar", "--pendiente", a["pendiente"]] + (["--commit"] if a.get("commit") else [])
     elif nombre == "comando":
-        args = [str(x) for x in a["args"]]
-        if args and args[0] in PROHIBIDOS:
-            raise ValueError(f"`{args[0]}` no se puede usar desde MCP")
+        args = [str(x) for x in a["args"]]  # `servir` y compañía se rechazan en cli.main, mire donde mire el comando
     else:
         raise KeyError(nombre)
     return previos + args
@@ -182,9 +198,12 @@ def ejecutar(args: list[str]) -> tuple[bool, str]:
     salida, errores = io.StringIO(), io.StringIO()
     with redirect_stdout(salida), redirect_stderr(errores):
         try:
-            codigo = cli.main(args)
+            codigo = cli.main(args, prohibidos=PROHIBIDOS)
         except SystemExit as e:  # argparse: argumentos inválidos
             codigo = e.code if isinstance(e.code, int) else 1
+        except Exception as e:  # el servidor nunca muere por un comando: el narrador se quedaría sin dados
+            print(f"error interno ({type(e).__name__}): {e}", file=sys.stderr)
+            codigo = 1
     texto = "\n".join(t for t in (salida.getvalue().strip(), errores.getvalue().strip()) if t)
     return codigo == 0, texto or "(sin salida)"
 
@@ -229,6 +248,14 @@ def atender(mensaje: dict) -> dict | None:
     return _error(id_, -32601, f"método no soportado: {metodo}")
 
 
+def _atender_seguro(mensaje) -> dict | None:
+    try:
+        return atender(mensaje)
+    except Exception as e:  # último recurso: responder un error y seguir vivo
+        id_ = mensaje.get("id") if isinstance(mensaje, dict) else None
+        return None if id_ is None else _error(id_, -32603, f"error interno: {type(e).__name__}: {e}")
+
+
 def servir(entrada=None, salida=None) -> None:
     entrada = entrada or sys.stdin
     salida = salida or sys.stdout
@@ -241,7 +268,7 @@ def servir(entrada=None, salida=None) -> None:
             respuestas = [_error(None, -32700, "JSON inválido")]
         else:
             lote = mensaje if isinstance(mensaje, list) else [mensaje]
-            respuestas = [r for r in (atender(m) for m in lote) if r is not None]
+            respuestas = [r for r in (_atender_seguro(m) for m in lote) if r is not None]
             if isinstance(mensaje, list) and respuestas:
                 salida.write(json.dumps(respuestas, ensure_ascii=False) + "\n")
                 salida.flush()

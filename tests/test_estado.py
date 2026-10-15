@@ -2,8 +2,10 @@ import io
 import json
 import shutil
 import unittest
+import urllib.error
 from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
+from unittest import mock
 
 from mesa import cli, estado, imagenes, informes, lecciones
 
@@ -94,13 +96,164 @@ class TestCli(unittest.TestCase):
             self.assertIn("máximo", errores)
 
 
+class TestTurnoEnUnPaso(unittest.TestCase):
+    def test_turno_aplica_los_cambios_y_queda_ultimo(self):
+        with repo_temporal():
+            antes = estado.leer_eventos("neva")[-1]["seq"]
+            codigo, salida, errores = correr(
+                "turno", "--accion", "Jualjin=¿Quién te persigue?", "--accion", "Crisljin=Reviso el paquete",
+                "--resumen", "Stepán habla de la patrulla",
+                "--cambio", 'pista "La patrulla busca un bote de la Armada" --fuente Stepán',
+                "--cambio", 'pnj Stepán --nota "Teme al Puente de Hierro"',
+                "--cambio", 'escena posicion Crisljin "junto al pilote, a 1 m de Stepán"',
+            )
+            self.assertEqual(codigo, 0, errores)
+            self.assertIn("Turno 12 registrado.", salida)
+            self.assertIn("Para la DECISIÓN", salida)
+            self.assertIn("«Tengo una idea» disponible (+4, una por escena)", salida)
+            datos = estado.cargar("neva")
+            self.assertEqual(datos["pistas"][-1]["fuente"], "Stepán")
+            self.assertIn("Teme al Puente de Hierro", next(n for n in datos["pnj"] if n["nombre"] == "Stepán")["notas"])
+            self.assertNotIn("pausa", datos)
+            nuevos = [e["tipo"] for e in estado.leer_eventos("neva", desde=antes)]
+            self.assertEqual(nuevos, ["pista", "pnj", "posicion", "turno"])
+
+    def test_turno_es_todo_o_nada(self):
+        with repo_temporal():
+            version = estado.cargar("neva")["version"]
+            antes = estado.leer_eventos("neva")[-1]["seq"]
+            codigo, _, errores = correr("turno", "--accion", "Jualjin=x", "--resumen", "x",
+                                        "--cambio", 'pista "No debería quedar"', "--cambio", "vida Nadie -2")
+            self.assertEqual(codigo, 1)
+            self.assertIn("no encuentro", errores)
+            self.assertEqual(estado.cargar("neva")["version"], version)
+            self.assertNotIn("No debería quedar", [p["texto"] for p in estado.cargar("neva")["pistas"]])
+            self.assertEqual(estado.leer_eventos("neva", desde=antes), [])
+
+    def test_turno_rechaza_comandos_que_no_son_cambios(self):
+        with repo_temporal():
+            for cambio in ("tirar 1d20", "servir", "pista"):
+                codigo, _, errores = correr("turno", "--resumen", "x", "--cambio", cambio)
+                self.assertEqual(codigo, 1, cambio)
+                self.assertIn("cambio", errores)
+
+    def test_turno_avisa_si_falta_la_accion_de_alguien(self):
+        with repo_temporal():
+            _, salida, _ = correr("turno", "--accion", "Jualjin=Le pregunto a Stepán", "--resumen", "x")
+            self.assertIn("⚠ Sin acción de Crisljin", salida)
+            self.assertNotIn("Sin acción de Jualjin", salida)
+
+    def test_accion_sin_igual_y_posicion_sin_quien_son_errores(self):
+        with repo_temporal():
+            codigo, _, errores = correr("turno", "--accion", "Jualjin miro", "--resumen", "x")
+            self.assertEqual(codigo, 1)
+            self.assertIn("Nombre=lo que declaró", errores)
+            codigo, _, errores = correr("escena", "posicion")
+            self.assertEqual(codigo, 1)
+            self.assertIn("uso: escena posicion", errores)
+
+
+class TestRecargasYDescanso(unittest.TestCase):
+    def test_fin_del_combate_recarga_lo_por_combate(self):
+        with repo_temporal():
+            self.assertEqual(correr("habilidad", "Jualjin", "a mi hermano", "--usar")[0], 0)
+            self.assertIn("sigue gastada", " ".join(informes.revisar(estado.cargar("neva"))))
+            correr("enemigo", "agregar", "Matón", "--plantilla", "maton")
+            self.assertNotIn("sigue gastada", " ".join(informes.revisar(estado.cargar("neva"))))
+            _, salida, _ = correr("enemigo", "limpiar")
+            self.assertIn("Fin del combate", salida)
+            jualjin = estado.buscar(estado.cargar("neva"), "Jualjin")[1]
+            self.assertTrue(jualjin["habilidades"][0]["disponible"])
+
+    def test_vendaje_una_vez_y_descanso_largo(self):
+        with repo_temporal(), dados_fijos(10):
+            correr("vida", "Jualjin", "-6")
+            self.assertEqual(correr("vendaje", "Jualjin")[0], 0)
+            self.assertEqual(estado.buscar(estado.cargar("neva"), "Jualjin")[1]["vida"], 11)
+            codigo, _, errores = correr("vendaje", "Jualjin")
+            self.assertEqual(codigo, 1)
+            self.assertIn("ya usó", errores)
+            correr("prueba", "Crisljin", "ingenio", "--usar", "tengo una idea")
+            correr("condicion", "Jualjin", "agregar", "agotamiento", "--niveles", "2")
+            _, salida, _ = correr("descanso", "largo")
+            self.assertIn("Descanso largo", salida)
+            datos = estado.cargar("neva")
+            jualjin, crisljin = estado.buscar(datos, "Jualjin")[1], estado.buscar(datos, "Crisljin")[1]
+            self.assertEqual(jualjin["vida"], 14)
+            self.assertNotIn("vendaje_usado", jualjin)
+            self.assertEqual(next(c for c in jualjin["condiciones"] if c["nombre"] == "Agotamiento")["niveles"], 1)
+            self.assertTrue(crisljin["habilidades"][0]["disponible"])
+
+    def test_no_hay_vendaje_con_amenazas_en_pie(self):
+        with repo_temporal():
+            correr("enemigo", "agregar", "Matón", "--plantilla", "maton")
+            codigo, _, errores = correr("vendaje", "Crisljin")
+            self.assertEqual(codigo, 1)
+            self.assertIn("fuera de combate", errores)
+
+
+class TestFichaBreveYDocumentos(unittest.TestCase):
+    def test_estado_breve_una_linea_por_personaje(self):
+        with repo_temporal():
+            _, salida, _ = correr("estado", "--breve")
+            lineas = salida.strip().splitlines()
+            self.assertEqual(len(lineas), 2)
+            self.assertTrue(lineas[1].startswith("Crisljin (11/11)"))
+            self.assertIn("Empapado: desventaja en Agilidad", lineas[1])
+            self.assertIn("Oficio +2", lineas[0])
+
+    def test_documento_se_pega_en_el_chat_y_queda_en_el_estado(self):
+        with repo_temporal():
+            codigo, salida, _ = correr("documento", "agregar", "Para Misha", "--clase", "carta",
+                                       "--texto", "Línea uno\\nLínea dos", "--fuente", "En el paquete")
+            self.assertEqual(codigo, 0)
+            self.assertIn("> **Carta · Para Misha**", salida)
+            self.assertIn("> Línea dos", salida)
+            self.assertIn("> _En el paquete_", salida)
+            datos = estado.cargar("neva")
+            self.assertEqual(datos["documentos"][0]["id"], "D1")
+            self.assertEqual(datos["documentos"][0]["texto"], "Línea uno\nLínea dos")
+            self.assertIn("## Documentos", informes.resumen(datos))
+            self.assertIn("Para Misha", correr("documento", "ver", "D1")[1])
+            self.assertEqual(estado.leer_eventos("neva")[-1]["tipo"], "documento")
+
+
+class TestErrores(unittest.TestCase):
+    def test_un_error_de_red_es_legible(self):
+        with repo_temporal(), mock.patch.object(imagenes, "_descargar", side_effect=urllib.error.URLError("sin red")):
+            codigo, _, errores = correr("imagen", "elegir", "http://127.0.0.1:9/x.png")
+            self.assertEqual(codigo, 1)
+            self.assertIn("error de sistema o de red", errores)
+
+    def test_revisar_avisa_de_enemigos_en_cero(self):
+        with repo_temporal(), dados_fijos(20, 6, 6):
+            correr("enemigo", "agregar", "Rata", "--plantilla", "rata")
+            correr("ataque", "Jualjin", "Rata", "--arma", "bichero")
+            _, salida, _ = correr("revisar")
+            self.assertIn("Rata está en 0 de vida", salida)
+
+
 class TestInformesYLecciones(unittest.TestCase):
     def test_contexto_incluye_lecciones_y_reglas_de_la_casa(self):
         with repo_temporal():
             texto = informes.contexto("neva")
-            self.assertIn("L001", texto)
+            self.assertIn("L003", texto)
+            self.assertNotIn("**L001**", texto)  # incorporada en AGENTS.md
+            self.assertNotIn("**L009**", texto)  # solo en la sesión cero
             self.assertIn("R6", texto)
             self.assertIn("ambientacion:historica", texto)
+
+    def test_lecciones_incorporadas_y_de_sesion_cero(self):
+        with repo_temporal():
+            nueva = lecciones.agregar("Pregunta la crudeza", "global", "seguridad", "test", fase="sesion-cero")
+            ids = lambda partida: [i["id"] for i in lecciones.aplicables(partida)]
+            self.assertIn(nueva["id"], ids({"escenas_jugadas": 0}))
+            self.assertNotIn(nueva["id"], ids({"escenas_jugadas": 2}))
+            lecciones.fijar_fase(nueva["id"], "siempre")
+            self.assertIn(nueva["id"], ids({"escenas_jugadas": 2}))
+            lecciones.incorporar(nueva["id"], "AGENTS.md")
+            self.assertNotIn(nueva["id"], ids({"escenas_jugadas": 0}))
+            self.assertIn("incorporada en AGENTS.md", lecciones.como_markdown(lecciones.leer()))
 
     def test_lecciones_por_alcance(self):
         with repo_temporal():

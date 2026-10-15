@@ -148,7 +148,9 @@ Hablar con frases cortas no gasta la acción; convencer a alguien sí. Además, 
 
 **Enemigos:** pueden rendirse, negociar o huir. Los animales no atacan sin motivo.
 
-En la CLI: `bin/mesa ataque Jualjin "Matón" --arma bichero`.
+**Fin del combate:** cuando no quedan amenazas en escena, vuelven las habilidades «por combate». Nadie en 0 de vida, aturdido, incapacitado o inconsciente puede atacar.
+
+En la CLI: `bin/mesa ataque Jualjin "Matón" --arma bichero`; `bin/mesa enemigo limpiar` cierra el combate.
 
 ## 9. Daño y dados de armas
 
@@ -169,6 +171,9 @@ Las armas de fuego son peligrosas: el director avisa en cuanto son perceptibles.
 - **Un vendaje** fuera de combate devuelve 3 de vida, una vez por personaje entre descansos.
 - **[mesa, opcional]** Un descanso corto de 1 hora recarga lo que diga «por descanso».
 - Un descanso se interrumpe si empieza un combate o alguien recibe daño.
+- **[mesa]** Cualquier descanso devuelve el vendaje. El largo, además, recarga todas las habilidades.
+
+En la CLI: `bin/mesa vendaje Crisljin`, `bin/mesa descanso corto` o `bin/mesa descanso largo`.
 
 ## 11. Interacción social
 

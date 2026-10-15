@@ -6,7 +6,7 @@ responden. El repo pone alrededor del director todo lo que una buena mesa necesi
 - **Reglas d20 simples**, compatibles con D&D quinta edición (SRD 5.2.1) y pensadas para principiantes.
 - **Dados reales y registrados**: nada de tiradas inventadas.
 - **Estado persistente** de la partida: fichas, escena, PNJ, pistas, tramas, recursos y relojes.
-- **Un visor web** con los dados animados, las fichas, la escena con su imagen y el mundo.
+- **Un visor web** con los dados animados, las fichas, la escena con su imagen, el mundo y los documentos que encuentran los personajes.
 - **Imágenes de ambiente opcionales**: tarjeta local, una imagen existente o una generada.
 - **Lecciones entre historias**: cada historia nueva arranca con lo aprendido en las anteriores.
 
@@ -46,18 +46,21 @@ instalarla, `uv tool install .` o `pip install -e .` dejan disponible el comando
 | `mesa retomar --narrador "<harness>/<modelo>"` | Empezar o retomar: traspaso pendiente, lecciones, reglas de la casa y estado |
 | `mesa pausar --pendiente "..." [--commit]` | Dejar el traspaso para el próximo narrador, en cualquier harness |
 | `mesa contexto [--completo]` | Lo que lee el director: lecciones, reglas de la casa, estado y últimos eventos |
-| `mesa estado` | Resumen del estado (`--json` para el estado completo) |
-| `mesa prueba <quien> <atributo\|habilidad> --cd media [--ventaja M] [--desventaja M] [--oficio] [--usar H]` | Prueba d20 |
+| `mesa estado` | Resumen del estado (`--breve`: una línea por personaje con lo que tiene a mano; `--json`: completo) |
+| `mesa prueba <quien> <atributo\|habilidad> --cd exigente [--ventaja M] [--desventaja M] [--oficio] [--usar H]` | Prueba d20 |
 | `mesa ataque <quien> <objetivo> [--arma] [--cobertura]` | Ataque contra Defensa y daño aplicado |
 | `mesa dano` / `tirar 2d6+1` / `suerte 30 --etiqueta` | Daño, tirada libre, d100 de suerte |
 | `mesa vida` / `condicion` / `habilidad` / `nivel` | Fichas |
+| `mesa vendaje <quien>` / `descanso corto\|largo` | Curarse y recargar habilidades |
 | `mesa enemigo agregar <nombre> --plantilla maton` | Amenazas en escena |
 | `mesa escena nueva\|editar\|posicion` | Escena actual y posiciones en metros |
 | `mesa pnj` / `pista` / `trama` / `misterio` / `recurso` / `reloj` | El mundo |
-| `mesa turno --accion "Nombre=..." --resumen` / `regla` / `nota` | Bitácora y reglas de la casa |
+| `mesa documento agregar\|ver` | Documentos del mundo (cartas, telegramas, periódicos): bloque para el chat y pestaña en el visor |
+| `mesa turno --accion "Nombre=..." --resumen "..." [--cambio '...']` | El turno y sus cambios de estado en un solo paso (todos o ninguno), con avisos |
+| `mesa revisar` / `regla` / `nota` | Avisos de consistencia, reglas de la casa y notas |
 | `mesa imagen ninguna\|elegir\|buscar\|generar\|biblioteca-agregar` | Imagen de la escena |
 | `mesa guardar` | «Guardar partida»: resumen copiable más un archivo |
-| `mesa retro` / `leccion agregar\|listar\|retirar` | Retrospectiva y lecciones |
+| `mesa retro` / `leccion agregar\|listar\|retirar\|incorporar\|fase` | Retrospectiva y lecciones |
 | `mesa servir` | El visor |
 | `mesa harness lista\|sync\|verificar\|instrucciones <id>` | Adaptadores por harness y su comprobación |
 

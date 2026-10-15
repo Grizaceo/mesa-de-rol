@@ -86,6 +86,9 @@ PLANTILLAS_ENEMIGO = {
 
 COBERTURA = {"media": 2, "tres-cuartos": 5, "tres cuartos": 5}
 
+# Condiciones con las que no se puede atacar.
+_NO_ACTUA = {"fuera de combate", "inconsciente", "incapacitado", "aturdido"}
+
 
 def resolver_atributo(nombre: str) -> tuple[str, str | None]:
     """'percepción' -> ('ingenio', 'Percepción'); 'Fuerza' -> ('fuerza', None)."""
@@ -136,9 +139,9 @@ def _efectos(ficha: dict, ambito: str) -> tuple[list[str], list[str], int]:
 
 
 def buscar_habilidad(ficha: dict, nombre: str) -> dict:
-    clave = norm(nombre)
+    clave = norm(nombre).strip("¡!¿?«» ")
     for h in ficha.get("habilidades", []):
-        if norm(h["nombre"]).strip("¡!¿? ") == clave.strip("¡!¿? ") or norm(h["nombre"]).startswith(clave):
+        if clave and norm(h["nombre"]).strip("¡!¿?«» ").startswith(clave):
             return h
     raise ValueError(f"{ficha['nombre']} no tiene la habilidad {nombre!r}")
 
@@ -264,6 +267,11 @@ def ataque(
 ) -> dict:
     """Tirada de ataque contra la Defensa del objetivo y, si acierta, daño aplicado."""
     reglas = partida.get("reglas", {})
+    if int(atacante.get("vida", 1)) <= 0:
+        raise ValueError(f"{atacante['nombre']} está en 0 de vida: no puede atacar")
+    impide = next((c["nombre"] for c in atacante.get("condiciones", []) if norm(c["nombre"]) in _NO_ACTUA), None)
+    if impide:
+        raise ValueError(f"{atacante['nombre']} no puede atacar: está {impide}")
     elegida = buscar_arma(atacante, arma)
     if atacante.get("atributos"):
         attr = resolver_atributo(atributo)[0] if atributo else ("agilidad" if elegida.get("distancia") else "fuerza")

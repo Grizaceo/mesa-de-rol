@@ -3,8 +3,9 @@ import os
 import subprocess
 import sys
 import unittest
+from unittest import mock
 
-from mesa import estado, mcp
+from mesa import cli, estado, mcp
 
 from apoyo import REPO, dados_fijos, repo_temporal
 
@@ -67,6 +68,38 @@ class TestHerramientas(unittest.TestCase):
             self.assertTrue(error)
             self.assertIn("argumentos inválidos", texto)
 
+    def test_prohibidos_aunque_vayan_detras_de_opciones(self):
+        with repo_temporal():
+            for args in (["--json", "servir"], ["-p", "neva", "servir"], ["--partida=neva", "servir"]):
+                error, texto = llamar("comando", {"args": args})
+                self.assertTrue(error, args)
+                self.assertIn("no se puede usar", texto)
+
+    def test_una_excepcion_inesperada_no_tumba_el_servidor(self):
+        with repo_temporal(), mock.patch.object(cli, "c_estado", side_effect=AttributeError("se rompió")):
+            error, texto = llamar("estado", {})
+            self.assertTrue(error)
+            self.assertIn("AttributeError", texto)
+
+    def test_turno_con_cambios(self):
+        args = mcp.construir_argumentos("turno", {
+            "resumen": "x", "acciones": {"Jualjin": "remo"},
+            "cambios": [["pista", "Huellas frescas", "--fuente", "Crisljin"], "vida Jualjin -1"]})
+        self.assertEqual(args, ["turno", "--resumen", "x", "--accion", "Jualjin=remo",
+                                "--cambio", "pista 'Huellas frescas' --fuente Crisljin", "--cambio", "vida Jualjin -1"])
+        with repo_temporal():
+            error, texto = llamar("turno", {"resumen": "x", "acciones": {"Jualjin": "remo", "Crisljin": "miro"},
+                                            "cambios": [["pista", "Huellas «frescas» y 'raras'", "--fuente", "Crisljin"]]})
+            self.assertFalse(error, texto)
+            self.assertEqual(estado.cargar("neva")["pistas"][-1]["texto"], "Huellas «frescas» y 'raras'")
+            self.assertEqual(estado.leer_eventos("neva")[-1]["tipo"], "turno")
+
+    def test_estado_breve(self):
+        with repo_temporal():
+            error, texto = llamar("estado", {"breve": True})
+            self.assertFalse(error)
+            self.assertTrue(texto.startswith("Jualjin (14/14)"))
+
     def test_errores_de_la_cli_vuelven_como_isError(self):
         with repo_temporal():
             error, texto = llamar("prueba", {"quien": "Nadie", "atributo": "fuerza"})
@@ -92,6 +125,21 @@ class TestProcesoReal(unittest.TestCase):
             self.assertIn("Los Hermanos del Neva", lineas[1]["result"]["content"][0]["text"])
             self.assertFalse(lineas[2]["result"]["isError"])
             self.assertEqual(estado.leer_eventos("neva")[-1]["expr"], "2d6+1")
+
+    def test_un_error_de_red_no_tumba_el_proceso(self):
+        """Antes, `imagen elegir` con la red caída mataba el servidor y el narrador se quedaba sin dados."""
+        with repo_temporal() as raiz:
+            mensajes = [
+                {"jsonrpc": "2.0", "id": 1, "method": "tools/call", "params": {"name": "comando", "arguments": {"args": ["imagen", "elegir", "http://127.0.0.1:9/x.png"]}}},
+                {"jsonrpc": "2.0", "id": 2, "method": "ping"},
+            ]
+            entrada = "\n".join(json.dumps(m) for m in mensajes) + "\n"
+            entorno = dict(os.environ, PYTHONPATH=str(REPO), MESA_RAIZ=str(raiz))
+            r = subprocess.run([sys.executable, "-m", "mesa.mcp"], input=entrada, capture_output=True, text=True, timeout=30, env=entorno)
+            lineas = [json.loads(l) for l in r.stdout.splitlines()]
+            self.assertEqual([l["id"] for l in lineas], [1, 2])
+            self.assertTrue(lineas[0]["result"]["isError"])
+            self.assertIn("error de sistema o de red", lineas[0]["result"]["content"][0]["text"])
 
 
 if __name__ == "__main__":

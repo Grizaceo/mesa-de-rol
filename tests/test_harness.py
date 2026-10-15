@@ -1,7 +1,9 @@
 import json
+import os
 import subprocess
 import tomllib
 import unittest
+from unittest import mock
 
 from mesa import estado, harness, informes, sesion
 
@@ -76,6 +78,25 @@ class TestSesiones(unittest.TestCase):
                 cli.main(["turno", "--accion", "Jualjin=¿Quién te persigue?", "--resumen", "Stepán responde"])
             self.assertNotIn("pausa", estado.cargar("neva"))
             self.assertNotIn("Retomar aquí", informes.contexto("neva"))
+
+    def test_retomar_sin_narrador_no_hereda_el_anterior(self):
+        with repo_temporal(), mock.patch.dict(os.environ, {"MESA_NARRADOR": ""}):
+            sesion.retomar("neva", "claude-code/opus")
+            sesion.pausar("neva", "Stepán espera preguntas")
+            datos = estado.cargar("neva")
+            self.assertNotIn("sesion", datos)
+            self.assertEqual(datos["pausa"]["narrador"], "claude-code/opus")
+            self.assertEqual(estado.leer_eventos("neva")[-1]["narrador"], "claude-code/opus")
+            texto = sesion.retomar("neva")
+            self.assertIn("Narra ahora: **sin identificar** (antes: claude-code/opus)", texto)
+            self.assertIn("Identifícate", texto)
+
+    def test_retomar_trae_el_borrador_de_anteriormente(self):
+        with repo_temporal():
+            texto = sesion.retomar("neva", "hermes/kimi-k3")
+            self.assertIn("## Anteriormente", texto)
+            self.assertIn("- Turno 11:", texto)
+            self.assertLess(texto.index("## Anteriormente"), texto.index("## Retomar aquí"))
 
     def test_pausar_con_commit(self):
         with repo_temporal() as raiz:

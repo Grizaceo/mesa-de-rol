@@ -18,6 +18,9 @@
   --serif: "Iowan Old Style", "Palatino Linotype", Palatino, "Book Antiqua", Georgia, serif;
   --sans: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
   --radio: 10px;
+  --papel: #fbf5e6;
+  --papel-tinta: #2a241b;
+  --papel-borde: #d9caa8;
 }
 @media (prefers-color-scheme: dark) {
   :root:where(:not([data-theme="light"])) {
@@ -31,6 +34,9 @@
     --texto-3: #9b9284;
     --oro: #e0b44c;
     --sombra: none;
+    --papel: #2e281f;
+    --papel-tinta: #efe5cf;
+    --papel-borde: #54493a;
   }
 }
 :root[data-theme="dark"] {
@@ -44,6 +50,9 @@
   --texto-3: #9b9284;
   --oro: #e0b44c;
   --sombra: none;
+  --papel: #2e281f;
+  --papel-tinta: #efe5cf;
+  --papel-borde: #54493a;
 }
 
 * { box-sizing: border-box; }
@@ -226,3 +235,24 @@ table.recursos th { color: var(--texto-2); font-weight: 600; width: 30%; }
 .bitacora .cuando { font-size: 0.75rem; color: var(--texto-3); }
 .bitacora .accion { margin: 2px 0; }
 .bitacora .resumen { margin: 2px 0; font-family: var(--serif); }
+
+/* documentos del mundo: papel dentro del papel */
+.documentos { display: grid; gap: 14px; }
+.documento {
+  max-width: 64ch; padding: 14px 18px 12px; border: 1px solid var(--papel-borde); border-radius: 3px;
+  background: var(--papel); color: var(--papel-tinta); box-shadow: var(--sombra); font-family: var(--serif);
+}
+.documento header { display: grid; gap: 4px; padding-bottom: 8px; margin-bottom: 10px; border-bottom: 1px solid var(--papel-borde); }
+.documento .clase { font: 600 0.7rem/1 var(--sans); letter-spacing: 0.14em; text-transform: uppercase; color: var(--acento); }
+.documento h3 { font-size: 1.1rem; }
+.documento .cuerpo { margin: 0; white-space: pre-wrap; line-height: 1.6; overflow-wrap: anywhere; }
+.documento footer { margin-top: 10px; font-size: 0.8rem; font-style: italic; opacity: 0.75; }
+.documento footer:empty { display: none; }
+.documento[data-clase="carta"] .cuerpo { font-style: italic; }
+.documento[data-clase="telegrama"] .cuerpo { font-family: ui-monospace, "Courier New", monospace; font-size: 0.86rem; text-transform: uppercase; letter-spacing: 0.04em; }
+.documento[data-clase="periodico"] header { border-bottom: 3px double var(--papel-tinta); text-align: center; }
+.documento[data-clase="periodico"] h3 { font-size: 1.3rem; font-weight: 700; }
+.documento[data-clase="periodico"] .cuerpo { column-width: 26ch; column-gap: 22px; text-align: justify; hyphens: auto; }
+.documento[data-clase="cartel"] { text-align: center; }
+.documento[data-clase="cartel"] h3 { font-size: 1.4rem; text-transform: uppercase; letter-spacing: 0.06em; }
+.documento.nuevo { outline: 2px solid var(--oro); outline-offset: 3px; }

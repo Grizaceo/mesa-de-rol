@@ -31,7 +31,7 @@ Escribe qué hace tu personaje, en primera persona o como prefieras:
 Además de los atributos, la ficha tiene:
 
 - **Oficio (+2):** lo que tu personaje hace desde siempre. Si la acción encaja, recuérdaselo al director.
-- **Habilidades:** se gastan y se recargan (por escena, por combate). El visor muestra si están disponibles.
+- **Habilidades:** se gastan y se recargan (por escena, por combate). El visor muestra si están disponibles, y el director te recuerda en cada turno lo que tienes a mano.
 - **Condiciones:** estados como *Empapado*. El visor marca el atributo afectado.
 
 ## Pedidos útiles
@@ -50,4 +50,5 @@ Abre `http://127.0.0.1:8765` mientras se juega. Muestra:
 - **Escena:** la imagen, la descripción y las posiciones.
 - **Dados:** la última tirada animada y el historial.
 - **Personajes:** sus fichas.
-- **Mundo:** PNJ, pistas, tramas, preguntas abiertas, recursos, reglas de la casa y bitácora.
+- **Mundo:** PNJ, pistas, documentos, tramas, preguntas abiertas, recursos, reglas de la casa y bitácora.
+- **Documentos:** las cartas, telegramas y periódicos que encuentran sus personajes. Cuando llega uno nuevo, el visor lo pone delante.

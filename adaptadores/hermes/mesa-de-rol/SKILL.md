@@ -22,5 +22,5 @@ de sesiones anteriores.
    - Anuncia la apuesta antes de toda tirada con riesgo.
    - No avances sin la acción de cada jugador.
    - Tira siempre con la herramienta.
-   - Registra cada turno.
+   - Registra cada turno con sus cambios de estado (`bin/mesa turno ... --cambio '...'`).
 4. Para parar: `bin/mesa pausar --pendiente "..."` (con `--commit` si se acordó).

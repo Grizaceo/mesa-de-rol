@@ -31,7 +31,10 @@ dado de daño.
 - 4–5 hilos que se puedan abandonar, retomar o resolver de formas inesperadas.
 
 ## 8. Agencia y formato
-- Cuántos jugadores, cómo declaran acciones, formato de respuesta (ESCENA / RESULTADO / ESTADO / DECISIÓN).
+- Cuántos jugadores, si juegan juntos frente a la pantalla o a distancia, y cómo declaran acciones.
+- Formato de respuesta: «Anteriormente…» al abrir sesión (4 líneas como máximo); ESCENA / RESULTADO / ESTADO / DECISIÓN, con una línea por personaje con lo que tiene a mano.
+- Documentos del mundo: cartas, periódicos o notas que se entregan en el chat y quedan en el visor.
 
 ## 9. Escena inicial
 - La escena con la que arranca, y lo que NO se revela todavía.
+- Cuando ya se haya jugado, pasa esta sección y el prompt original a `prompt-original.md`: la biblia queda como la versión vigente.
