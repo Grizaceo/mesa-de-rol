@@ -38,3 +38,4 @@
 {"seq": 38, "ts": "2026-10-15T09:09:00-03:00", "reconstruido": true, "tipo": "escena", "accion": "nueva", "numero": 2, "titulo": "Bajo el Muelle Torcido", "lugar": "Hueco seco bajo el Muelle Torcido, Rybny Bereg", "hora": "primera hora de la mañana"}
 {"seq": 39, "ts": "2026-10-15T09:10:00-03:00", "reconstruido": true, "tipo": "nota", "texto": "Partida pausada por los jugadores para crear este repositorio. Pendiente: «Pregunten lo que quieran. A ustedes no les voy a mentir»."}
 {"seq": 40, "ts": "2026-10-15T08:07:43-03:00", "tipo": "imagen", "archivo": "escena-02-tarjeta.svg", "modo": "ninguna", "origen": "tarjeta generada localmente"}
+{"seq": 41, "ts": "2026-10-15T08:08:36-03:00", "tipo": "imagen", "archivo": "escena-02-tarjeta.svg", "modo": "ninguna", "origen": "tarjeta generada localmente"}

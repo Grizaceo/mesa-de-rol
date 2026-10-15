@@ -68,6 +68,9 @@ def tarjeta_svg(slug: str) -> dict:
     titulo = escape(escena.get("titulo", datos.get("titulo", "")))
     lugar = escape(" · ".join(x for x in (escena.get("lugar"), escena.get("hora")) if x))
     numero = escena.get("numero", 0)
+    # El texto se encoge para no salirse del marco de 1040 px útiles (≈0,5 em por carácter).
+    talla_titulo = min(78, int(1040 / max(1, len(titulo)) / 0.5))
+    talla_lugar = min(36, int(1040 / max(1, len(lugar)) / 0.48))
     svg = f"""<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 675" role="img" aria-label="{titulo}">
   <defs>
     <linearGradient id="f" x1="0" y1="0" x2="1" y2="1">
@@ -79,8 +82,8 @@ def tarjeta_svg(slug: str) -> dict:
   <rect width="1200" height="675" fill="url(#f)"/>
   <rect x="36" y="36" width="1128" height="603" fill="none" stroke="#e8dcc4" stroke-opacity="0.35" stroke-width="2"/>
   <text x="80" y="140" fill="#e8dcc4" fill-opacity="0.7" font-family="Georgia, serif" font-size="34" letter-spacing="6">ESCENA {numero}</text>
-  <text x="80" y="330" fill="#f4ecd8" font-family="Georgia, serif" font-size="78">{titulo}</text>
-  <text x="80" y="410" fill="#e8dcc4" fill-opacity="0.85" font-family="Georgia, serif" font-size="36" font-style="italic">{lugar}</text>
+  <text x="80" y="330" fill="#f4ecd8" font-family="Georgia, serif" font-size="{talla_titulo}">{titulo}</text>
+  <text x="80" y="410" fill="#e8dcc4" fill-opacity="0.85" font-family="Georgia, serif" font-size="{talla_lugar}" font-style="italic">{lugar}</text>
 </svg>
 """
     nombre = _nombre_destino(datos, ".svg", "tarjeta")

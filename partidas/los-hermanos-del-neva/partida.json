@@ -4,7 +4,7 @@
   "reglamento": "d20-simple",
   "idioma": "es",
   "creada": "2026-10-13T00:00:00-03:00",
-  "version": 1,
+  "version": 2,
   "ambientacion": {
     "epoca": "Otoño de 1917",
     "lugar": "Rybny Bereg, barrio pesquero ficticio junto al Neva, en las afueras de Petrogrado",
@@ -406,5 +406,5 @@
     "¿Por qué rasparon el nombre del bote?",
     "¿A quién responde de verdad el sargento Belov?"
   ],
-  "actualizado": "2026-10-15T08:07:43-03:00"
+  "actualizado": "2026-10-15T08:08:36-03:00"
 }
