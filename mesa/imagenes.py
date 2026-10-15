@@ -40,6 +40,12 @@ def leer_biblioteca() -> list[dict]:
     return json.loads(ruta.read_text(encoding="utf-8")) if ruta.exists() else []
 
 
+def _dir_imagenes(slug: str) -> Path:
+    ruta = estado.dir_partida(slug) / "imagenes"
+    ruta.mkdir(exist_ok=True)
+    return ruta
+
+
 def _nombre_destino(datos: dict, sufijo: str, base: str = "") -> str:
     numero = datos.get("escena", {}).get("numero", 0)
     limpio = re.sub(r"[^a-z0-9]+", "-", norm(base or datos.get("escena", {}).get("titulo", "escena"))).strip("-")[:40]
@@ -78,7 +84,7 @@ def tarjeta_svg(slug: str) -> dict:
 </svg>
 """
     nombre = _nombre_destino(datos, ".svg", "tarjeta")
-    (estado.dir_partida(slug) / "imagenes" / nombre).write_text(svg, encoding="utf-8")
+    (_dir_imagenes(slug) / nombre).write_text(svg, encoding="utf-8")
     return _asignar(slug, datos, nombre, "ninguna", "tarjeta generada localmente")
 
 
@@ -136,7 +142,7 @@ def _descargar(url: str) -> tuple[bytes, str]:
 def elegir(slug: str, fuente: str) -> dict:
     """Modo 'elegir': id de la biblioteca, ruta local o URL http(s)."""
     datos = estado.cargar(slug)
-    destino_dir = estado.dir_partida(slug) / "imagenes"
+    destino_dir = _dir_imagenes(slug)
     item = next((i for i in leer_biblioteca() if i["id"] == fuente or i["archivo"] == fuente), None)
     if item:
         origen = dir_biblioteca() / item["archivo"]
@@ -236,5 +242,5 @@ def generar(slug: str, prompt: str | None = None, proveedor: str | None = None, 
     contenido, tipo = (_generar_gemini if proveedor == "gemini" else _generar_openrouter)(texto, modelo)
     sufijo = {"image/jpeg": ".jpg", "image/webp": ".webp"}.get(tipo, ".png")
     nombre = _nombre_destino(datos, sufijo)
-    (estado.dir_partida(slug) / "imagenes" / nombre).write_bytes(contenido)
+    (_dir_imagenes(slug) / nombre).write_bytes(contenido)
     return _asignar(slug, datos, nombre, "generar", f"{proveedor}:{modelo}", prompt=texto)

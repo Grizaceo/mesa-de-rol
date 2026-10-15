@@ -158,5 +158,7 @@ def nueva_partida(slug: str, titulo: str) -> Path:
         json.dumps(datos, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
     )
     (destino / "eventos.jsonl").write_text("", encoding="utf-8")
+    for carpeta in ("imagenes", "guardados"):
+        (destino / carpeta).mkdir(exist_ok=True)
     registrar(slug, {"tipo": "partida_creada", "titulo": titulo})
     return destino

@@ -1,5 +1,6 @@
 import io
 import json
+import shutil
 import unittest
 from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
@@ -49,6 +50,15 @@ class TestEstado(unittest.TestCase):
             self.assertTrue((ruta / "biblia.md").exists())
             with self.assertRaises(FileExistsError):
                 estado.nueva_partida("la-isla", "otra vez")
+
+    def test_partida_nueva_sin_carpetas_vacias_de_git(self):
+        with repo_temporal() as raiz:
+            for carpeta in ("imagenes", "guardados"):
+                shutil.rmtree(raiz / "partidas" / "_plantilla" / carpeta, ignore_errors=True)
+            estado.nueva_partida("clon", "Clon limpio")
+            shutil.rmtree(raiz / "partidas" / "clon" / "imagenes")
+            self.assertTrue((raiz / "partidas" / "clon" / "imagenes" / imagenes.tarjeta_svg("clon")["archivo"]).exists())
+            self.assertTrue((raiz / informes.guardado("clon")[1]).exists())
 
 
 class TestCli(unittest.TestCase):
