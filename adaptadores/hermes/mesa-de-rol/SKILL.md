@@ -23,4 +23,5 @@ de sesiones anteriores.
    - No avances sin la acción de cada jugador.
    - Tira siempre con la herramienta.
    - Registra cada turno con sus cambios de estado (`bin/mesa turno ... --cambio '...'`).
+   - Lee `director.md` con tu herramienta de lectura de archivos, nunca con la terminal: los jugadores miran la misma pantalla.
 4. Para parar: `bin/mesa pausar --pendiente "..."` (con `--commit` si se acordó).

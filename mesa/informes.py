@@ -195,12 +195,13 @@ def contexto(slug: str, completo: bool = False, n_eventos: int = 15) -> str:
             f"> {p['pendiente']}",
             f"_(pausó {p.get('narrador') or 'sin identificar'} el {p['cuando'][:16].replace('T', ' ')})_",
             "",
-            "Continúa exactamente desde ahí: sin resumir de más y sin avanzar sin la acción de cada jugador.",
+            "Continúa exactamente desde ahí, tras un «Anteriormente…» de 4 líneas como máximo, y sin avanzar sin la acción de cada jugador.",
             "",
         ]
     partes += [
-        "Lee también: `AGENTS.md` (tu contrato), `reglas/d20-simple.md`, "
-        f"`{base.relative_to(estado.RAIZ)}/biblia.md` y `{base.relative_to(estado.RAIZ)}/director.md` (secreto).",
+        "Lee también: `AGENTS.md` (tu contrato), `reglas/d20-simple.md` y "
+        f"`{base.relative_to(estado.RAIZ)}/biblia.md`. `{base.relative_to(estado.RAIZ)}/director.md` es secreto: "
+        "léelo con tu herramienta de lectura de archivos, nunca imprimiéndolo en la terminal, que los jugadores también miran.",
         "",
         "## Lecciones aplicables (de historias anteriores)",
         lecciones.como_markdown(lecciones.aplicables(datos)),
@@ -210,10 +211,11 @@ def contexto(slug: str, completo: bool = False, n_eventos: int = 15) -> str:
     partes += ["", resumen(datos), "## Últimos eventos"]
     partes += [_linea_evento(e) for e in estado.leer_eventos(slug, limite=n_eventos)] or ["(sin eventos)"]
     if completo:
-        for nombre in ("biblia.md", "director.md"):
-            ruta = base / nombre
-            if ruta.exists():
-                partes += ["", f"---\n# {nombre}\n", ruta.read_text(encoding="utf-8")]
+        if (base / "biblia.md").exists():
+            partes += ["", "---\n# biblia.md\n", (base / "biblia.md").read_text(encoding="utf-8")]
+        if (base / "director.md").exists():
+            # Los jugadores miran la misma terminal: los secretos nunca salen por aquí.
+            partes += ["", "---\n# director.md\n", "(Secreto: no se imprime. Léelo con tu herramienta de lectura de archivos.)"]
         reglas = estado.RAIZ / "reglas" / f"{datos.get('reglamento', 'd20-simple')}.md"
         if reglas.exists():
             partes += ["", "---\n", reglas.read_text(encoding="utf-8")]

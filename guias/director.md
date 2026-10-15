@@ -87,6 +87,7 @@ Si el mundo cambia mientras los jugadores atienden otra cosa, tiene que haber un
 - **Lo que saben los jugadores** va en `partida.json`, porque el visor lo muestra entero.
 - **Lo que solo sabe el director** va en `director.md`. Nunca en `partida.json`.
 - **Antes de revelar algo**, comprueba que no contradice lo ya jugado. Si un secreto no está decidido, decídelo respetando las restricciones de `director.md`.
+- **En la misma pantalla:** los jugadores ven la terminal. Lee `director.md` con la herramienta de lectura de archivos (no con `cat`), escribe en él en las pausas naturales avisando antes («Notas del director: no miren la pantalla un momento») y no pongas secretos en los resúmenes de turno, las notas ni los documentos, porque el visor los muestra. `contexto --completo` no imprime `director.md`.
 
 ## 9. Formato de respuesta
 

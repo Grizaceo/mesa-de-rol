@@ -47,7 +47,7 @@ HERRAMIENTAS = [
     {
         "name": "contexto",
         "title": "Contexto del director",
-        "description": "Lecciones aplicables, reglas de la casa, estado y últimos eventos. Con completo=true incluye biblia, notas secretas del director y reglamento.",
+        "description": "Lecciones aplicables, reglas de la casa, estado y últimos eventos. Con completo=true incluye biblia y reglamento. director.md no sale por aquí: es secreto y se lee con la herramienta de lectura de archivos.",
         "inputSchema": {"type": "object", "properties": {
             "completo": {"type": "boolean"}, "eventos": {"type": "integer", "minimum": 1}, "partida": _PARTIDA}},
     },

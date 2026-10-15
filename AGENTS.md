@@ -25,7 +25,7 @@ cómo arranca cada harness, en `guias/harnesses.md`.
    - el estado y los últimos eventos.
 
    Para otra partida, añade `-p <slug>`; `bin/mesa partidas` las lista. **Cumple las lecciones**: son correcciones reales de jugadores. Las que ya están escritas en este contrato se marcan como incorporadas y no se repiten.
-2. Lee `partidas/<slug>/biblia.md` (estilo, mundo, PNJ, formato) y `partidas/<slug>/director.md` (secretos y relojes). Consulta `reglas/d20-simple.md` cuando una regla no esté clara.
+2. Lee `partidas/<slug>/biblia.md` (estilo, mundo, PNJ, formato) y `partidas/<slug>/director.md` (secretos y relojes), este último con tu herramienta de lectura de archivos (ver «Secretos»). Consulta `reglas/d20-simple.md` cuando una regla no esté clara.
 3. Abre con **«Anteriormente…»**: como máximo 4 líneas, con tu voz, a partir del borrador que trae `retomar`. Luego continúa **exactamente** desde «Retomar aquí», sin avanzar sin la acción de cada jugador.
 4. Si tu harness puede dejar procesos en segundo plano, ofrece el visor: `bin/mesa servir` en `http://127.0.0.1:8765`.
 
@@ -64,7 +64,11 @@ cómo arranca cada harness, en `guias/harnesses.md`.
 ## Secretos y lo que ven los jugadores
 
 - `partida.json` es **público**: el visor lo muestra entero. Ahí solo va lo que los personajes saben.
-- Los secretos, las consecuencias en marcha y lo que aún no se decidió van en `director.md`. Mantenlo al día al decidir algo, porque es la memoria del próximo narrador.
+- Los secretos, las consecuencias en marcha y lo que aún no se decidió van en `director.md`. Mantenlo al día, porque es la memoria del próximo narrador.
+- **Los jugadores miran la misma pantalla que tú.** Para que los secretos no queden a la vista:
+  - Lee `director.md` con la herramienta de lectura de archivos de tu harness, que no vuelca el contenido en el chat. Nunca con `cat` ni con nada que lo imprima en la terminal. Si tu harness no tiene esa herramienta, avisa antes en una línea: «Notas del director: no miren la pantalla un momento».
+  - Escribe en `director.md` en las pausas naturales (fin de escena, al pausar) y avisa antes con esa misma línea, porque el cambio se ve en la terminal.
+  - Nada secreto en lo que es público: `partida.json`, los resúmenes de `turno`, las `nota` y los documentos se ven en el visor.
 - Al decidir un secreto, respeta lo ya jugado: la bitácora (`eventos.jsonl`) y las pistas mandan.
 
 ## Documentos del mundo

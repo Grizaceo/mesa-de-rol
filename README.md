@@ -90,7 +90,7 @@ tests/             python3 -m unittest
 
 - **Agnóstico del harness.** El estado vive en el repo, el contrato en `AGENTS.md` y las herramientas son CLI y MCP con el mismo motor. Narrar desde otro agente es pausar y retomar.
 - **El director no inventa dados.** Usa `bin/mesa`, y la tirada queda en la bitácora y en el visor.
-- **Público y secreto están separados.** `partida.json` es lo que ven los jugadores; `director.md` no lo sirve el visor.
+- **Público y secreto están separados.** `partida.json` es lo que ven los jugadores; `director.md` no lo sirve el visor ni lo imprime la CLI, y el narrador lo lee con su herramienta de lectura de archivos, porque los jugadores miran la misma terminal.
 - **Afinar sin reentrenar.** Las lecciones son instrucciones con evidencia y alcance (`global`, `jugadores`, `reglas:…`, `ambientacion:…`) que se inyectan al director. Ver `guias/lecciones.md`.
 - **Imágenes opcionales y baratas por defecto.** Generar solo si se pide, porque gasta crédito y sale a la red. Ver `guias/imagenes.md`.
 

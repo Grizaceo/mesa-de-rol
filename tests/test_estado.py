@@ -243,6 +243,14 @@ class TestInformesYLecciones(unittest.TestCase):
             self.assertIn("R6", texto)
             self.assertIn("ambientacion:historica", texto)
 
+    def test_contexto_completo_no_imprime_los_secretos(self):
+        with repo_temporal() as raiz:
+            (raiz / "partidas" / "neva" / "director.md").write_text("SECRETO-DE-PRUEBA", encoding="utf-8")
+            texto = informes.contexto("neva", completo=True)
+            self.assertNotIn("SECRETO-DE-PRUEBA", texto)
+            self.assertIn("herramienta de lectura de archivos", texto)
+            self.assertIn("# Biblia — Los Hermanos del Neva", texto)
+
     def test_lecciones_incorporadas_y_de_sesion_cero(self):
         with repo_temporal():
             nueva = lecciones.agregar("Pregunta la crudeza", "global", "seguridad", "test", fase="sesion-cero")
