@@ -12,4 +12,5 @@
 | [`entorno.md`](entorno.md) | Director | Caídas, agua helada, frío, luz, asfixia y viajes, en metros |
 | [`imagenes.md`](imagenes.md) | Director | Ninguna, elegir o generar: biblioteca, licencias y costos |
 | [`lecciones.md`](lecciones.md) | Director | Cómo mejora cada historia con lo aprendido en la anterior |
+| [`harnesses.md`](harnesses.md) | Director | Narrar desde Claude Code, Codex, Hermes, OpenCode, Devin, Gemini CLI o Cursor, y cambiar entre ellos |
 | [`fuente-srd.md`](fuente-srd.md) | Curiosos | Qué regla sale de qué sección del SRD 5.2.1 y qué es propio |

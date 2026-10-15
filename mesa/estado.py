@@ -116,11 +116,24 @@ def leer_eventos(slug: str, desde: int = 0, limite: int | None = None) -> list[d
     return eventos[-limite:] if limite else eventos
 
 
+def narrador_actual(slug: str) -> str | None:
+    """$MESA_NARRADOR manda; si no, el narrador de la sesión abierta con `mesa retomar`."""
+    if os.environ.get("MESA_NARRADOR"):
+        return os.environ["MESA_NARRADOR"]
+    try:
+        return cargar(slug).get("sesion", {}).get("narrador")
+    except (FileNotFoundError, json.JSONDecodeError):
+        return None
+
+
 def registrar(slug: str, evento: dict) -> dict:
     ruta = _ruta_eventos(slug)
     previos = leer_eventos(slug)
     seq = (previos[-1]["seq"] if previos else 0) + 1
     completo = {"seq": seq, "ts": ahora(), **evento}
+    narrador = narrador_actual(slug)
+    if narrador and "narrador" not in completo:
+        completo["narrador"] = narrador
     with ruta.open("a", encoding="utf-8") as f:
         f.write(json.dumps(completo, ensure_ascii=False) + "\n")
     return completo

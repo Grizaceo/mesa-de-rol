@@ -1,0 +1,11 @@
+---
+description: Empezar una historia de rol nueva con sesión cero
+---
+Vamos a empezar una historia nueva. Siguiendo `AGENTS.md` y `guias/sesion-cero.md`:
+
+1. Muestra las lecciones de esta mesa (`bin/mesa leccion listar --alcance jugadores`) y acuerda la sesión cero.
+2. Crea la partida: `bin/mesa nueva <slug> --titulo "<título>"`.
+3. Escribe con los jugadores `biblia.md`, los personajes en `partida.json` y `director.md`.
+4. Ejecuta `bin/mesa retomar --narrador "<tu harness>/<tu modelo>"` y arranca la primera escena.
+
+Idea de los jugadores: $ARGUMENTS

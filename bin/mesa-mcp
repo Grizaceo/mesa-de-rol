@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+# Servidor MCP por stdio para cualquier harness: bin/mesa-mcp
+RAIZ="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+PYTHONPATH="$RAIZ${PYTHONPATH:+:$PYTHONPATH}" exec python3 -m mesa.mcp "$@"

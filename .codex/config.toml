@@ -1,0 +1,5 @@
+# Generado por `bin/mesa harness sync`. No editar: cambia adaptadores/ o mesa/harness.py.
+# Codex solo lee este archivo si el proyecto está marcado como de confianza.
+[mcp_servers.mesa]
+command = "bin/mesa-mcp"
+args = []

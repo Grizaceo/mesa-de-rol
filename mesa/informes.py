@@ -87,9 +87,18 @@ def contexto(slug: str, completo: bool = False, n_eventos: int = 15) -> str:
     """Lo que el director lee al empezar o retomar: lecciones, reglas de la casa, estado y lo último ocurrido."""
     datos = estado.cargar(slug)
     base = estado.dir_partida(slug)
-    partes = [
-        f"# Contexto del director — {datos.get('titulo')} ({slug})",
-        "",
+    partes = [f"# Contexto del director — {datos.get('titulo')} ({slug})", ""]
+    if datos.get("pausa"):
+        p = datos["pausa"]
+        partes += [
+            "## Retomar aquí (traspaso de la sesión anterior)",
+            f"> {p['pendiente']}",
+            f"_(pausó {p.get('narrador') or 'sin identificar'} el {p['cuando'][:16].replace('T', ' ')})_",
+            "",
+            "Continúa exactamente desde ahí: sin resumir de más y sin avanzar sin la acción de cada jugador.",
+            "",
+        ]
+    partes += [
         "Lee también: `AGENTS.md` (tu contrato), `reglas/d20-simple.md`, "
         f"`{base.relative_to(estado.RAIZ)}/biblia.md` y `{base.relative_to(estado.RAIZ)}/director.md` (secreto).",
         "",

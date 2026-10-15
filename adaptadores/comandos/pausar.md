@@ -1,0 +1,11 @@
+---
+description: Pausar la partida de rol dejando el traspaso al próximo narrador
+---
+Vamos a pausar la partida. Siguiendo `AGENTS.md`:
+
+1. Asegúrate de que el último turno esté registrado (`bin/mesa turno ...`) y el estado al día.
+2. Ejecuta `bin/mesa pausar --pendiente "<qué acaba de pasar y qué se espera de cada jugador>"`. Añade `--commit` si los jugadores lo aceptan o si la partida seguirá en otro harness o máquina.
+3. Si piden «guardar partida», corre `bin/mesa guardar` y pega el resumen.
+4. Si es fin de sesión, corre `bin/mesa retro` y propón lecciones (solo se agregan las aprobadas).
+
+Nota de los jugadores: $ARGUMENTS

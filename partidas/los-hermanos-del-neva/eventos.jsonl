@@ -39,3 +39,5 @@
 {"seq": 39, "ts": "2026-10-15T09:10:00-03:00", "reconstruido": true, "tipo": "nota", "texto": "Partida pausada por los jugadores para crear este repositorio. Pendiente: «Pregunten lo que quieran. A ustedes no les voy a mentir»."}
 {"seq": 40, "ts": "2026-10-15T08:07:43-03:00", "tipo": "imagen", "archivo": "escena-02-tarjeta.svg", "modo": "ninguna", "origen": "tarjeta generada localmente"}
 {"seq": 41, "ts": "2026-10-15T08:08:36-03:00", "tipo": "imagen", "archivo": "escena-02-tarjeta.svg", "modo": "ninguna", "origen": "tarjeta generada localmente"}
+{"seq": 42, "ts": "2026-10-15T08:24:02-03:00", "tipo": "sesion_retomada", "narrador": "claude-code/claude-opus-5.5", "narrador_anterior": null}
+{"seq": 43, "ts": "2026-10-15T08:24:02-03:00", "tipo": "sesion_pausada", "pendiente": "Escena 2, «Bajo el Muelle Torcido». Stepán, herido pero estable y escondido bajo el muelle con el paquete, acaba de decir: «Pregunten lo que quieran. A ustedes no les voy a mentir». Anya escucha desde arriba. Se esperan las preguntas o acciones de Jualjin y de Crisljin; ninguno ha hablado todavía.", "narrador": "claude-code/claude-opus-5.5"}

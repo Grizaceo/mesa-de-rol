@@ -12,16 +12,23 @@ responden. El repo pone alrededor del director todo lo que una buena mesa necesi
 
 La primera partida, *Los Hermanos del Neva* (Rusia, 1917), está guardada en pausa justo donde quedó.
 
-## Jugar
+## Jugar, con el harness que quieras
 
-Con Claude Code, o con cualquier agente que lea `AGENTS.md`:
+El narrador puede vivir en Claude Code, Codex, Hermes, OpenCode, Devin, Gemini CLI, Cursor o cualquier agente que lea `AGENTS.md`:
 
 ```bash
 cd ~/.hermes/workspace/ACTIVE/mesa-de-rol
-claude                         # y luego: «retomemos la partida» o «nueva historia»
+claude      # o: codex · hermes · opencode · devin · gemini · cursor-agent
+# luego: «retomemos la partida» (o /retomar donde haya comandos)
 ```
 
-El agente lee `AGENTS.md`, corre `bin/mesa contexto` y dirige con las herramientas del repo.
+El agente ejecuta `bin/mesa retomar --narrador "<harness>/<modelo>"`, lee el traspaso pendiente y dirige con las herramientas del repo:
+
+- **Cualquier harness con shell:** la CLI `bin/mesa`.
+- **Harnesses con MCP:** el servidor `mesa` (`bin/mesa-mcp`), ya configurado para cada uno.
+
+Se puede cambiar de harness entre sesiones: `mesa pausar` en uno y `mesa retomar` en otro. La matriz, lo verificado y las particularidades de cada harness están en [`guias/harnesses.md`](guias/harnesses.md).
+
 Para ver la mesa en vivo:
 
 ```bash
@@ -36,6 +43,8 @@ instalarla, `uv tool install .` o `pip install -e .` dejan disponible el comando
 | Comando | Para qué |
 |---|---|
 | `mesa partidas` / `usar <slug>` / `nueva <slug> --titulo` | Elegir o crear partida |
+| `mesa retomar --narrador "<harness>/<modelo>"` | Empezar o retomar: traspaso pendiente, lecciones, reglas de la casa y estado |
+| `mesa pausar --pendiente "..." [--commit]` | Dejar el traspaso para el próximo narrador, en cualquier harness |
 | `mesa contexto [--completo]` | Lo que lee el director: lecciones, reglas de la casa, estado y últimos eventos |
 | `mesa estado` | Resumen del estado (`--json` para el estado completo) |
 | `mesa prueba <quien> <atributo\|habilidad> --cd media [--ventaja M] [--desventaja M] [--oficio] [--usar H]` | Prueba d20 |
@@ -50,6 +59,7 @@ instalarla, `uv tool install .` o `pip install -e .` dejan disponible el comando
 | `mesa guardar` | «Guardar partida»: resumen copiable más un archivo |
 | `mesa retro` / `leccion agregar\|listar\|retirar` | Retrospectiva y lecciones |
 | `mesa servir` | El visor |
+| `mesa harness lista\|sync\|verificar\|instrucciones <id>` | Adaptadores por harness y su comprobación |
 
 Todos los comandos que tiran dados o cambian algo dejan un evento en
 `partidas/<slug>/eventos.jsonl`, y el visor lo recoge en menos de un segundo.
@@ -57,7 +67,11 @@ Todos los comandos que tiran dados o cambian algo dejan un evento en
 ## Estructura
 
 ```
-AGENTS.md          contrato del director IA (CLAUDE.md lo importa)
+AGENTS.md          contrato del director IA: la fuente para todos los harnesses
+adaptadores/       origen de los comandos (/retomar, /pausar, /nueva-historia) y de la skill de Hermes
+CLAUDE.md GEMINI.md .mcp.json .codex/ .opencode/ .gemini/ .cursor/ .claude/ .aider.conf.yml
+                   generados por `bin/mesa harness sync` (no editar a mano)
+bin/mesa           CLI · bin/mesa-mcp: servidor MCP por stdio
 reglas/            el reglamento d20-simple (manda)
 guias/             jugadores, director, sesión cero, habilidades, combate, condiciones, entorno, imágenes, lecciones, fuente SRD
 mesa/              motor en Python: dados, reglas, estado, imágenes, informes, servidor, CLI
@@ -71,6 +85,7 @@ tests/             python3 -m unittest
 
 ## Ideas que lo sostienen
 
+- **Agnóstico del harness.** El estado vive en el repo, el contrato en `AGENTS.md` y las herramientas son CLI y MCP con el mismo motor. Narrar desde otro agente es pausar y retomar.
 - **El director no inventa dados.** Usa `bin/mesa`, y la tirada queda en la bitácora y en el visor.
 - **Público y secreto están separados.** `partida.json` es lo que ven los jugadores; `director.md` no lo sirve el visor.
 - **Afinar sin reentrenar.** Las lecciones son instrucciones con evidencia y alcance (`global`, `jugadores`, `reglas:…`, `ambientacion:…`) que se inyectan al director. Ver `guias/lecciones.md`.
@@ -84,7 +99,7 @@ python3 -m unittest discover -s tests -v
 
 ## Pendiente / ideas
 
-- Modo autónomo: un runner que llame a un modelo por API, para jugar desde Telegram o la web sin un agente de terminal.
+- Modo autónomo: un runner que llame a un modelo por API, para jugar desde Telegram o la web sin un agente de terminal (se puede apoyar en el mismo servidor MCP).
 - Narración por voz (TTS) de los bloques ESCENA.
 - Mapa de posiciones dibujado a partir de `escena.posiciones`.
 - Exportar la bitácora a un dataset de turnos, por si algún día se quiere reentrenar de verdad.

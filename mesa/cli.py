@@ -10,7 +10,7 @@ import argparse
 import json
 import sys
 
-from . import dados, estado, imagenes, informes, lecciones, reglas
+from . import dados, estado, harness, imagenes, informes, lecciones, reglas, sesion
 from .texto import con_signo, norm
 
 
@@ -63,6 +63,39 @@ def c_nueva(args) -> None:
 def c_estado(args) -> None:
     slug, datos = _cargar(args)
     print(json.dumps(datos, ensure_ascii=False, indent=2) if args.json else informes.resumen(datos))
+
+
+def c_retomar(args) -> None:
+    print(sesion.retomar(estado.slug_activo(args.partida), args.narrador))
+
+
+def c_pausar(args) -> None:
+    print(sesion.pausar(estado.slug_activo(args.partida), args.pendiente, commit=args.commit))
+
+
+def c_harness(args) -> None:
+    if args.accion == "lista":
+        raiz = estado.RAIZ
+        for h in harness.HARNESSES:
+            faltan = [a for a in h["archivos"] if not (raiz / a).exists()]
+            marca = "✗ faltan " + ", ".join(faltan) if faltan else "✓"
+            print(f"{h['nombre']:<16} {marca}")
+            print(f"  instrucciones: {h['instrucciones']}")
+            print(f"  herramientas:  CLI bin/mesa · MCP {h['mcp']}")
+            print(f"  comandos:      {h['comandos']}")
+    elif args.accion == "sync":
+        cambiados = harness.sync()
+        print("Adaptadores regenerados: " + ", ".join(cambiados) if cambiados else "Adaptadores ya estaban en sincronía.")
+    elif args.accion == "verificar":
+        resultados = harness.verificar()
+        for nombre, estado_, detalle in resultados:
+            print(f"{ {'ok': '✓', 'fallo': '✗', 'omitido': '–'}[estado_] } {nombre}: {detalle}")
+        if any(e == "fallo" for _, e, _ in resultados):
+            raise RuntimeError("hay comprobaciones fallidas")
+    elif args.accion == "instrucciones":
+        print(harness.instrucciones(args.id))
+    else:
+        print(f"Skill instalada en {harness.instalar_skill_hermes(args.forzar)}")
 
 
 def c_contexto(args) -> None:
@@ -323,6 +356,9 @@ def c_reloj(args) -> None:
 
 def c_turno(args) -> None:
     slug = estado.slug_activo(args.partida)
+    datos = estado.cargar(slug)
+    if datos.pop("pausa", None) is not None:
+        estado.guardar(slug, datos)
     acciones = {}
     for item in args.accion or []:
         quien, _, que = item.partition("=")
@@ -423,6 +459,20 @@ def _parser() -> argparse.ArgumentParser:
     s = cmd("usar", c_usar, "marca la partida activa"); s.add_argument("slug")
     s = cmd("nueva", c_nueva, "crea una partida desde la plantilla"); s.add_argument("slug"); s.add_argument("--titulo", required=True)
     cmd("estado", c_estado, "resumen del estado actual")
+    s = cmd("retomar", c_retomar, "empieza o retoma la sesión: registra al narrador y muestra dónde quedó la historia")
+    s.add_argument("--narrador", help="harness/modelo, p. ej. 'codex/gpt-5.5' o 'claude-code/opus'")
+    s = cmd("pausar", c_pausar, "deja el traspaso para el próximo narrador, en cualquier harness")
+    s.add_argument("--pendiente", required=True, help="qué acaba de pasar y qué se espera de cada jugador")
+    s.add_argument("--commit", action="store_true", help="commitea partidas/, lecciones/ y biblioteca/ en git")
+    s = cmd("harness", c_harness, "adaptadores por harness: lista | sync | verificar | instrucciones <id> | instalar-hermes")
+    hsub = s.add_subparsers(dest="accion", required=True)
+    hsub.add_parser("lista", help="qué lee cada harness y si sus archivos están")
+    hsub.add_parser("sync", help="regenera CLAUDE.md, GEMINI.md, configuraciones MCP y comandos")
+    hsub.add_parser("verificar", help="comprueba adaptadores, servidor MCP y el escáner de Hermes")
+    e = hsub.add_parser("instrucciones", help="cómo arrancar en un harness concreto")
+    e.add_argument("id", choices=[h["id"] for h in harness.HARNESSES])
+    e = hsub.add_parser("instalar-hermes", help="instala la skill opcional en ~/.hermes/skills (fuera del repo)")
+    e.add_argument("--forzar", action="store_true")
     s = cmd("contexto", c_contexto, "contexto del director: lecciones, reglas de la casa, estado y últimos eventos")
     s.add_argument("--completo", action="store_true", help="incluye biblia, notas del director y reglamento")
     s.add_argument("--eventos", type=int, default=15)
