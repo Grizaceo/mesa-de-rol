@@ -14,17 +14,54 @@ import base64
 import json
 import os
 import re
-import shutil
 import urllib.request
 from html import escape
 from pathlib import Path
+from urllib.parse import unquote
 
 from . import estado
 from .texto import norm
 
-EXTENSIONES = {".png", ".jpg", ".jpeg", ".webp", ".gif", ".svg"}
+EXTENSIONES = {".png", ".jpg", ".jpeg", ".webp", ".gif"}  # sin .svg: el SVG importado se rechaza
 TAMANO_MAXIMO = 15 * 1024 * 1024
 MODELOS = {"gemini": "gemini-2.5-flash-image", "openrouter": "google/gemini-2.5-flash-image"}
+ACENTO_POR_DEFECTO = "#8a6d3b"
+_ACENTO = re.compile(r"^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$")
+
+# El contenido manda sobre la extensión y sobre el Content-Type: solo pasa lo que empieza
+# como un raster conocido. El SVG se rechaza porque es markup activo, no una imagen inerte.
+TIPOS_RASTER = {"image/png": ".png", "image/jpeg": ".jpg", "image/gif": ".gif", "image/webp": ".webp"}
+
+
+def tipo_de_bytes(cabecera: bytes) -> str | None:
+    if cabecera.startswith(b"\x89PNG\r\n\x1a\n"):
+        return "image/png"
+    if cabecera.startswith(b"\xff\xd8\xff"):
+        return "image/jpeg"
+    if cabecera.startswith((b"GIF87a", b"GIF89a")):
+        return "image/gif"
+    if len(cabecera) >= 12 and cabecera[:4] == b"RIFF" and cabecera[8:12] == b"WEBP":
+        return "image/webp"
+    return None
+
+
+def verificar_raster(contenido: bytes, nombre: str) -> str:
+    """Devuelve la extensión del contenido real o explica el rechazo."""
+    tipo = tipo_de_bytes(contenido[:32])
+    if tipo is None:
+        pista = "es SVG o markup" if contenido.lstrip()[:1] == b"<" else "no es png, jpg, gif ni webp"
+        raise ValueError(f"{nombre}: {pista}. El visor solo sirve la tarjeta SVG que genera `imagen ninguna`.")
+    return TIPOS_RASTER[tipo]
+
+
+def leer_raster(ruta: Path) -> tuple[bytes, str]:
+    """Lee un archivo local comprobando tamaño y contenido; devuelve (bytes, extensión real)."""
+    if not ruta.is_file() or ruta.suffix.lower() not in EXTENSIONES:
+        raise ValueError(f"no es una imagen válida: {ruta}")
+    if ruta.stat().st_size > TAMANO_MAXIMO:
+        raise ValueError("la imagen supera 15 MB")
+    contenido = ruta.read_bytes()
+    return contenido, verificar_raster(contenido, ruta.name)
 
 
 def dir_biblioteca() -> Path:
@@ -61,10 +98,17 @@ def _asignar(slug: str, datos: dict, archivo: str, modo: str, fuente: str, promp
 
 
 def tarjeta_svg(slug: str) -> dict:
-    """Modo 'ninguna': una tarjeta tipográfica con el título y el lugar de la escena."""
+    """Modo 'ninguna': una tarjeta tipográfica con el título y el lugar de la escena.
+
+    El SVG se arma solo con valores controlados: el color se valida contra un patrón
+    estricto y los textos se escapan, para que `tema.acento` no pueda inyectar markup.
+    """
     datos = estado.cargar(slug)
     escena = datos.get("escena", {})
-    acento = datos.get("tema", {}).get("acento", "#8a6d3b")
+    acento = datos.get("tema", {}).get("acento", ACENTO_POR_DEFECTO)
+    if not (isinstance(acento, str) and _ACENTO.match(acento)):
+        acento = ACENTO_POR_DEFECTO
+    acento = escape(acento)
     titulo = escape(escena.get("titulo", datos.get("titulo", "")))
     lugar = escape(" · ".join(x for x in (escena.get("lugar"), escena.get("hora")) if x))
     numero = escena.get("numero", 0)
@@ -107,14 +151,13 @@ def buscar(consulta: str, limite: int = 8) -> list[dict]:
 
 def agregar_biblioteca(ruta: str, etiquetas: list[str], descripcion: str, fuente: str, licencia: str) -> dict:
     origen = Path(ruta).expanduser()
-    if origen.suffix.lower() not in EXTENSIONES or not origen.is_file():
-        raise ValueError(f"no es una imagen válida: {ruta}")
+    contenido, _ = leer_raster(origen)
     dir_biblioteca().mkdir(parents=True, exist_ok=True)
     destino = dir_biblioteca() / origen.name
     if destino.exists() and destino.resolve() != origen.resolve():
         raise FileExistsError(f"ya hay una imagen llamada {origen.name} en la biblioteca")
     if destino.resolve() != origen.resolve():
-        shutil.copy2(origen, destino)
+        destino.write_bytes(contenido)
     indice = [i for i in leer_biblioteca() if i["archivo"] != origen.name]
     item = {
         "id": re.sub(r"[^a-z0-9]+", "-", norm(origen.stem)).strip("-"),
@@ -133,37 +176,39 @@ def _descargar(url: str) -> tuple[bytes, str]:
     peticion = urllib.request.Request(url, headers={"User-Agent": "mesa-de-rol/0.1"})
     with urllib.request.urlopen(peticion, timeout=30) as resp:
         tipo = resp.headers.get_content_type()
-        if not tipo.startswith("image/"):
-            raise ValueError(f"la URL no devuelve una imagen (Content-Type: {tipo})")
+        if tipo not in TIPOS_RASTER:
+            raise ValueError(
+                f"la URL no devuelve una imagen raster admitida (Content-Type: {tipo}); "
+                "el SVG externo se rechaza porque puede traer markup activo"
+            )
         cuerpo = resp.read(TAMANO_MAXIMO + 1)
     if len(cuerpo) > TAMANO_MAXIMO:
         raise ValueError("la imagen supera 15 MB")
-    sufijo = {"image/jpeg": ".jpg", "image/png": ".png", "image/webp": ".webp", "image/gif": ".gif", "image/svg+xml": ".svg"}.get(tipo, ".img")
-    return cuerpo, sufijo
+    return cuerpo, verificar_raster(cuerpo, url)
 
 
 def elegir(slug: str, fuente: str) -> dict:
-    """Modo 'elegir': id de la biblioteca, ruta local o URL http(s)."""
+    """Modo 'elegir': id de la biblioteca, ruta local o URL http(s). Solo imágenes raster."""
     datos = estado.cargar(slug)
     destino_dir = _dir_imagenes(slug)
     item = next((i for i in leer_biblioteca() if i["id"] == fuente or i["archivo"] == fuente), None)
     if item:
         origen = dir_biblioteca() / item["archivo"]
-        nombre = _nombre_destino(datos, origen.suffix.lower(), origen.stem)
-        shutil.copy2(origen, destino_dir / nombre)
+        contenido, sufijo = leer_raster(origen)
+        nombre = _nombre_destino(datos, sufijo, Path(item["archivo"]).stem)
+        (destino_dir / nombre).write_bytes(contenido)
         return _asignar(slug, datos, nombre, "elegir", f"biblioteca:{item['id']} ({item.get('licencia', 'licencia sin indicar')})")
     if re.match(r"https?://", fuente):
         cuerpo, sufijo = _descargar(fuente)
-        nombre = _nombre_destino(datos, sufijo, Path(fuente.split("?")[0]).stem)
+        nombre = _nombre_destino(datos, sufijo, Path(unquote(fuente.split("?")[0])).stem)
         (destino_dir / nombre).write_bytes(cuerpo)
         return _asignar(slug, datos, nombre, "elegir", fuente)
     origen = Path(fuente).expanduser()
     if not origen.is_file() or origen.suffix.lower() not in EXTENSIONES:
         raise ValueError(f"no encuentro la imagen {fuente!r} (ni en la biblioteca, ni como ruta, ni como URL)")
-    if origen.stat().st_size > TAMANO_MAXIMO:
-        raise ValueError("la imagen supera 15 MB")
-    nombre = _nombre_destino(datos, origen.suffix.lower(), origen.stem)
-    shutil.copy2(origen, destino_dir / nombre)
+    contenido, sufijo = leer_raster(origen)
+    nombre = _nombre_destino(datos, sufijo, origen.stem)
+    (destino_dir / nombre).write_bytes(contenido)
     return _asignar(slug, datos, nombre, "elegir", str(origen))
 
 

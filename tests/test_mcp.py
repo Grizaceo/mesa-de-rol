@@ -10,13 +10,7 @@ from unittest import mock
 
 from mesa import cli, estado, imagenes, mcp
 
-from apoyo import REPO, dados_fijos, repo_temporal
-
-# PNG real de 1x1: para las pruebas que ahora exigen contenido, no solo extensión.
-PNG_1X1 = bytes.fromhex(
-    "89504e470d0a1a0a0000000d49484452000000010000000108060000001f15c489"
-    "0000000d4944415478da62f8cfc0f01f00050001ff9c8a6d4d0000000049454e44ae426082"
-)
+from apoyo import REPO, PNG_1X1, dados_fijos, repo_temporal
 
 
 def llamar(nombre, argumentos):

@@ -34,7 +34,17 @@ bin/mesa imagen elegir ~/Descargas/puente.jpg
 bin/mesa imagen elegir https://upload.wikimedia.org/.../foto.jpg
 ```
 
-Las URL se descargan una sola vez. Solo se aceptan si responden con `Content-Type: image/*` y pesan hasta 15 MB.
+Las URL se descargan una sola vez. Solo se aceptan si responden con un `Content-Type` de
+imagen raster admitida y pesan hasta 15 MB.
+
+### Qué se acepta (y qué no)
+
+El **contenido manda sobre la extensión**: un archivo `foto.png` que por dentro es SVG se
+rechaza, igual que un `.svg` importado. El visor solo sirve la tarjeta SVG que genera
+`imagen ninguna` con valores controlados; los formatos admitidos son **PNG, JPEG, GIF y
+WebP** de hasta **15 MB**. Desde el MCP solo se eligen imágenes ya curadas en
+`biblioteca/imagenes/` (id o archivo): las rutas y URLs van por la CLI a mano
+(ver [`seguridad.md`](seguridad.md)).
 
 ### Derechos
 

@@ -20,6 +20,12 @@ mimetypes.add_type("text/javascript", ".js")
 mimetypes.add_type("image/svg+xml", ".svg")
 mimetypes.add_type("image/webp", ".webp")
 
+# Lo que el visor puede servir como medio. El SVG solo aparece en la tarjeta que genera
+# `imagen ninguna` con valores controlados; se sirve enjaulado por si quedó uno de antes.
+TIPOS_RASTER = {".png", ".jpg", ".jpeg", ".gif", ".webp"}
+TIPOS_MEDIO = TIPOS_RASTER | {".svg"}
+CSP_SVG = "default-src 'none'; style-src 'unsafe-inline'; sandbox"
+
 
 class Manejador(BaseHTTPRequestHandler):
     server_version = "mesa-de-rol"
@@ -27,28 +33,34 @@ class Manejador(BaseHTTPRequestHandler):
     def log_message(self, formato: str, *args) -> None:  # silencioso: el visor sondea cada segundo
         return
 
-    def _enviar(self, codigo: int, cuerpo: bytes, tipo: str) -> None:
+    def _enviar(self, codigo: int, cuerpo: bytes, tipo: str, cabeceras: dict | None = None) -> None:
         self.send_response(codigo)
         self.send_header("Content-Type", tipo)
         self.send_header("Content-Length", str(len(cuerpo)))
         self.send_header("Cache-Control", "no-store")
         self.send_header("X-Content-Type-Options", "nosniff")
+        for nombre, valor in (cabeceras or {}).items():
+            self.send_header(nombre, valor)
         self.end_headers()
         self.wfile.write(cuerpo)
 
     def _json(self, datos, codigo: int = 200) -> None:
         self._enviar(codigo, json.dumps(datos, ensure_ascii=False).encode(), "application/json; charset=utf-8")
 
-    def _archivo(self, base: Path, relativo: str) -> None:
+    def _archivo(self, base: Path, relativo: str, permitidos: set[str] | None = None) -> None:
         base = base.resolve()
         objetivo = (base / unquote(relativo)).resolve()
         if not objetivo.is_relative_to(base) or not objetivo.is_file():
             self._json({"error": "no encontrado"}, 404)
             return
+        if permitidos is not None and objetivo.suffix.lower() not in permitidos:
+            self._json({"error": "no encontrado"}, 404)
+            return
         tipo = mimetypes.guess_type(objetivo.name)[0] or "application/octet-stream"
-        if tipo.startswith("text/") or tipo.endswith("javascript"):
+        if tipo.startswith("text/") or tipo.endswith("javascript") or tipo.startswith("image/svg"):
             tipo += "; charset=utf-8"
-        self._enviar(200, objetivo.read_bytes(), tipo)
+        cabeceras = {"Content-Security-Policy": CSP_SVG} if tipo.startswith("image/svg") else None
+        self._enviar(200, objetivo.read_bytes(), tipo, cabeceras)
 
     def _slug(self, consulta: dict) -> str:
         slug = consulta.get("p", [None])[0] or estado.slug_activo()
@@ -80,9 +92,9 @@ class Manejador(BaseHTTPRequestHandler):
                 _, _, slug, *resto = url.path.split("/")
                 if not slug_valido(slug):
                     raise ValueError("partida inválida")
-                return self._archivo(estado.dir_partida(slug) / "imagenes", "/".join(resto))
+                return self._archivo(estado.dir_partida(slug) / "imagenes", "/".join(resto), TIPOS_MEDIO)
             if url.path.startswith("/biblioteca/"):
-                return self._archivo(estado.RAIZ / "biblioteca" / "imagenes", url.path.removeprefix("/biblioteca/"))
+                return self._archivo(estado.RAIZ / "biblioteca" / "imagenes", url.path.removeprefix("/biblioteca/"), TIPOS_RASTER)
             self._json({"error": "no encontrado"}, 404)
         except FileNotFoundError as e:
             self._json({"error": str(e)}, 404)

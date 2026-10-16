@@ -9,7 +9,7 @@ from unittest import mock
 
 from mesa import cli, estado, imagenes, informes, lecciones
 
-from apoyo import dados_fijos, repo_temporal
+from apoyo import PNG_1X1, dados_fijos, repo_temporal
 
 
 def correr(*args):
@@ -331,8 +331,8 @@ class TestImagenes(unittest.TestCase):
 
     def test_elegir_desde_biblioteca_y_ruta(self):
         with repo_temporal() as raiz:
-            origen = raiz / "muelle.svg"
-            origen.write_text("<svg xmlns='http://www.w3.org/2000/svg'/>", encoding="utf-8")
+            origen = raiz / "muelle.png"
+            origen.write_bytes(PNG_1X1)
             item = imagenes.agregar_biblioteca(str(origen), ["muelle", "niebla"], "Muelle en la niebla", "propia", "CC0")
             self.assertEqual(imagenes.buscar("niebla en el muelle")[0]["id"], item["id"])
             e = imagenes.elegir("neva", item["id"])
