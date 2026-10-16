@@ -6,11 +6,11 @@ desviaciones están documentadas en reglas/d20-simple.md y guias/fuente-srd.md.
 
 from __future__ import annotations
 
-from . import dados
+from . import dados, esquemas
 from .texto import con_signo, norm
 
-ATRIBUTOS = ("fuerza", "agilidad", "ingenio", "corazon")
-NOMBRE_ATRIBUTO = {"fuerza": "Fuerza", "agilidad": "Agilidad", "ingenio": "Ingenio", "corazon": "Corazón"}
+ATRIBUTOS = tuple(esquemas.NOMBRES_LEGACY)
+NOMBRE_ATRIBUTO = esquemas.NOMBRES_LEGACY
 _ALIAS_ATRIBUTO = {
     "fue": "fuerza", "str": "fuerza", "fuer": "fuerza",
     "agi": "agilidad", "dex": "agilidad", "des": "agilidad",
@@ -88,6 +88,21 @@ COBERTURA = {"media": 2, "tres-cuartos": 5, "tres cuartos": 5}
 
 # Condiciones con las que no se puede atacar.
 _NO_ACTUA = {"fuera de combate", "inconsciente", "incapacitado", "aturdido"}
+
+
+def exigir_legacy(partida: dict) -> None:
+    """El motor d20-simple solo interpreta partidas legacy.
+
+    Sobre una partida 2024 (puntuaciones de 1 a 30) calcularía mal en silencio: sus
+    valores son puntuaciones, no bonos. Se niega con un motivo legible hasta que el
+    corte vertical de reglas 2024 (P2) traiga el motor que le corresponde.
+    """
+    if esquemas.version_de(partida) != esquemas.VERSION_LEGACY:
+        raise ValueError(
+            f"«{partida.get('reglamento')}» todavía no tiene motor de reglas: llega con el corte vertical "
+            "de reglas 2024 (P2); mientras tanto, esta partida registra estado y dados, "
+            "pero no tira pruebas ni ataques"
+        )
 
 
 def resolver_atributo(nombre: str) -> tuple[str, str | None]:
@@ -182,6 +197,7 @@ def prueba(
     etiqueta: str = "",
 ) -> dict:
     """Prueba de atributo o habilidad. Muta la ficha si se gasta una habilidad."""
+    exigir_legacy(partida)
     reglas = partida.get("reglas", {})
     attr, habilidad = resolver_atributo(atributo)
     partes = [{"fuente": NOMBRE_ATRIBUTO[attr], "valor": int(ficha.get("atributos", {}).get(attr, 0))}]
@@ -266,6 +282,7 @@ def ataque(
     etiqueta: str = "",
 ) -> dict:
     """Tirada de ataque contra la Defensa del objetivo y, si acierta, daño aplicado."""
+    exigir_legacy(partida)
     reglas = partida.get("reglas", {})
     if int(atacante.get("vida", 1)) <= 0:
         raise ValueError(f"{atacante['nombre']} está en 0 de vida: no puede atacar")

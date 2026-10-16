@@ -15,7 +15,7 @@ import shutil
 from datetime import datetime
 from pathlib import Path
 
-from . import bloqueo, distribucion
+from . import bloqueo, distribucion, esquemas
 from .texto import norm, slug_valido
 
 
@@ -100,7 +100,9 @@ class Conflicto(RuntimeError):
 
 def cargar(slug: str) -> dict:
     _recuperar_si_hace_falta(slug)
-    return json.loads((dir_partida(slug) / "partida.json").read_text(encoding="utf-8"))
+    datos = json.loads((dir_partida(slug) / "partida.json").read_text(encoding="utf-8"))
+    esquemas.validar(datos, slug)
+    return datos
 
 
 # ---------- escritura: una transacción con diario ----------
@@ -269,6 +271,7 @@ def escribir(slug: str, datos: dict | None = None, eventos=()) -> list[dict]:
         _recuperar(slug)
         directorio = dir_partida(slug)
         if datos is not None:
+            esquemas.validar(datos, slug)
             en_disco = _version_en_disco(directorio)
             cargada = int(datos.get("version", 0))
             if cargada != en_disco:
@@ -377,6 +380,7 @@ def nueva_partida(slug: str, titulo: str) -> Path:
         raise FileExistsError(f"ya existe {destino} (¿la creó otro proceso a la vez?)") from None
     datos = json.loads((destino / "partida.json").read_text(encoding="utf-8"))
     datos.update({"slug": slug, "titulo": titulo, "creada": ahora(), "version": 0})
+    esquemas.validar(datos, slug)
     (destino / "partida.json").write_text(
         json.dumps(datos, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
     )

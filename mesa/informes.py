@@ -6,8 +6,7 @@ import os
 from collections import Counter
 from datetime import datetime
 
-from . import estado, lecciones
-from .reglas import NOMBRE_ATRIBUTO
+from . import esquemas, estado, lecciones
 from .texto import con_signo, norm
 
 CLASES_DOCUMENTO = ("carta", "telegrama", "periodico", "nota", "cartel", "informe", "otro")
@@ -22,12 +21,17 @@ _VUELVE = {
 }
 
 
-def _ficha(p: dict) -> list[str]:
-    atributos = " · ".join(f"{NOMBRE_ATRIBUTO[k]} {con_signo(v)}" for k, v in p.get("atributos", {}).items())
+def _ficha(p: dict, version: int) -> list[str]:
+    pares = []
+    for k, v in p.get("atributos", {}).items():
+        if version == esquemas.VERSION_2024:
+            pares.append(f"{esquemas.nombre_atributo(k)} {v} ({con_signo(esquemas.modificador(v))})")
+        else:
+            pares.append(f"{esquemas.nombre_atributo(k)} {con_signo(v)}")
     lineas = [
         f"**{p['nombre']}** ({p.get('rol', '')}, nivel {p.get('nivel', 1)}): vida {p['vida']}/{p['vida_max']}, "
         f"defensa {p.get('defensa')}, protección {p.get('proteccion', 0)}",
-        f"  - {atributos}",
+        f"  - {' · '.join(pares)}",
     ]
     if p.get("habilidades"):
         estados = [f"{h['nombre']} ({'disponible' if h.get('disponible', True) else 'gastada'})" for h in p["habilidades"]]
@@ -47,7 +51,7 @@ def _efecto_breve(c: dict) -> str:
     afectados = [norm(a) for a in c.get("desventaja", [])]
     if "todo" in afectados:
         return "desventaja en todo"
-    frases = [" y ".join(NOMBRE_ATRIBUTO[a] for a in afectados if a in NOMBRE_ATRIBUTO)]
+    frases = [" y ".join(esquemas.NOMBRES_LEGACY[a] for a in afectados if a in esquemas.NOMBRES_LEGACY)]
     frases = ["en " + frases[0]] if frases[0] else []
     if "ataques" in afectados:
         frases.append("al atacar")
@@ -141,8 +145,9 @@ def resumen(datos: dict) -> str:
     if escena.get("posiciones"):
         lineas.append("Posiciones: " + "; ".join(f"{x['quien']}: {x['donde']}" for x in escena["posiciones"]))
     lineas += ["", "## Personajes"]
+    version = esquemas.version_de(datos)
     for p in datos.get("personajes", []):
-        lineas += _ficha(p)
+        lineas += _ficha(p, version)
     if datos.get("enemigos"):
         lineas += ["", "## Amenazas en escena"]
         lineas += [
@@ -173,7 +178,7 @@ def resumen(datos: dict) -> str:
 def _linea_evento(e: dict) -> str:
     t = e.get("tipo")
     if t in ("prueba", "ataque"):
-        que = e.get("habilidad") or NOMBRE_ATRIBUTO.get(e.get("atributo") or "", "") or e.get("arma", "")
+        que = e.get("habilidad") or esquemas.nombre_atributo(e.get("atributo") or "") or e.get("arma", "")
         return f"[{e['seq']}] {e['quien']} · {que} · {e.get('etiqueta', '')}: {e['total']} vs {e.get('cd')} → {e['resultado']}"
     if t == "turno":
         acciones = "; ".join(f"{k}: {v}" for k, v in e.get("acciones", {}).items())
@@ -198,9 +203,13 @@ def contexto(slug: str, completo: bool = False, n_eventos: int = 15) -> str:
             "Continúa exactamente desde ahí, tras un «Anteriormente…» de 4 líneas como máximo, y sin avanzar sin la acción de cada jugador.",
             "",
         ]
+    doc_reglas = estado.RAIZ / "reglas" / f"{datos.get('reglamento', 'd20-simple')}.md"
+    lecturas = ["`AGENTS.md` (tu contrato)"]
+    if doc_reglas.exists():
+        lecturas.append(f"`reglas/{doc_reglas.name}`")
+    lecturas.append(f"`{base.relative_to(estado.RAIZ)}/biblia.md`")
     partes += [
-        "Lee también: `AGENTS.md` (tu contrato), `reglas/d20-simple.md` y "
-        f"`{base.relative_to(estado.RAIZ)}/biblia.md`. `{base.relative_to(estado.RAIZ)}/director.md` es secreto: "
+        "Lee también: " + ", ".join(lecturas) + f". `{base.relative_to(estado.RAIZ)}/director.md` es secreto: "
         "léelo con tu herramienta de lectura de archivos, nunca imprimiéndolo en la terminal, que los jugadores también miran.",
         "",
         "## Lecciones aplicables (de historias anteriores)",
@@ -216,9 +225,8 @@ def contexto(slug: str, completo: bool = False, n_eventos: int = 15) -> str:
         if (base / "director.md").exists():
             # Los jugadores miran la misma terminal: los secretos nunca salen por aquí.
             partes += ["", "---\n# director.md\n", "(Secreto: no se imprime. Léelo con tu herramienta de lectura de archivos.)"]
-        reglas = estado.RAIZ / "reglas" / f"{datos.get('reglamento', 'd20-simple')}.md"
-        if reglas.exists():
-            partes += ["", "---\n", reglas.read_text(encoding="utf-8")]
+        if doc_reglas.exists():
+            partes += ["", "---\n", doc_reglas.read_text(encoding="utf-8")]
     return "\n".join(partes) + "\n"
 
 

@@ -362,6 +362,7 @@ def c_enemigo(args) -> None:
 
 def c_nivel(args) -> None:
     slug, datos = _cargar(args)
+    reglas.exigir_legacy(datos)  # subir nivel es mecánica d20-simple: en 2024 no hay regla aún
     _, ficha = estado.buscar(datos, args.quien)
     if args.atributo:
         attr, _ = reglas.resolver_atributo(args.atributo)

@@ -12,6 +12,13 @@ responden. El repo pone alrededor del director todo lo que una buena mesa necesi
 
 La primera partida, *Los Hermanos del Neva* (Rusia, 1917), está guardada en pausa justo donde quedó.
 
+**Esquemas.** Cada partida declara el suyo en `partida.json`. Las de antes de los esquemas (como
+*Los Hermanos del Neva*) son legacy (`d20-simple`, cuatro atributos-bono) y se abren tal como
+quedaron. Las nuevas nacen en el esquema 2 (`dnd-2024`, seis características con puntuación,
+valores derivados en `mesa/esquemas.py`); su motor de reglas llega con el corte vertical 2024
+(P2) y hasta entonces `prueba`, `ataque` y `nivel` se niegan a calcular sobre ellas en vez de
+hacerlo mal.
+
 ## Jugar, con el harness que quieras
 
 El narrador puede vivir en Claude Code, Codex, Hermes, OpenCode, Devin, Gemini CLI, Cursor o cualquier agente que lea `AGENTS.md`:

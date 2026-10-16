@@ -1,7 +1,8 @@
 {
   "slug": "_plantilla",
   "titulo": "Nueva historia",
-  "reglamento": "d20-simple",
+  "schema_version": 2,
+  "reglamento": "dnd-2024",
   "idioma": "es",
   "version": 0,
   "ambientacion": {
@@ -13,11 +14,6 @@
   },
   "tema": { "acento": "#8a6d3b" },
   "reglas": {
-    "bono_oficio": 2,
-    "naturales": true,
-    "critico_dobla_dados": true,
-    "dano_minimo": 1,
-    "atributo_maximo": 4,
     "unidades": "metros",
     "muerte": "No hay muerte permanente salvo que se acuerde jugar en modo letal.",
     "crudeza": "Por acordar en la sesión cero."
@@ -37,11 +33,10 @@
       "defensa": 12,
       "proteccion": 0,
       "color": "#2a78d6",
-      "atributos": { "fuerza": 1, "agilidad": 1, "ingenio": 1, "corazon": 1 },
+      "atributos": { "fuerza": 10, "destreza": 10, "constitucion": 10, "inteligencia": 10, "sabiduria": 10, "carisma": 10 },
       "aspecto": "",
       "personalidad": "",
       "bueno_para": "",
-      "oficio": { "bono": 2, "aplica": "" },
       "rasgos": [],
       "habilidades": [],
       "equipo": [],
