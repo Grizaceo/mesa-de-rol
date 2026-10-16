@@ -18,7 +18,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-from . import estado
+from . import distribucion, estado
 
 MCP = "bin/mesa-mcp"
 CABECERA_MD = "<!-- Generado por `bin/mesa harness sync`. No editar: cambia AGENTS.md o adaptadores/. -->"
@@ -53,7 +53,7 @@ def _raiz() -> Path:
 def comandos() -> list[tuple[str, str, str]]:
     """(nombre, descripción, cuerpo) de cada comando canónico."""
     salida = []
-    for ruta in sorted((_raiz() / "adaptadores" / "comandos").glob("*.md")):
+    for ruta in sorted((distribucion.adaptadores() / "comandos").glob("*.md")):
         texto = ruta.read_text(encoding="utf-8")
         m = re.match(r"---\n(.*?)\n---\n(.*)", texto, re.S)
         if not m:
@@ -169,6 +169,7 @@ def verificar() -> list[tuple[str, str, str]]:
                        f"desincronizados: {', '.join(pendientes)} (corre `bin/mesa harness sync`)" if pendientes else "en sincronía con AGENTS.md y adaptadores/"))
     lanzador = _raiz() / MCP
     resultados.append(("bin/mesa-mcp", "ok" if lanzador.exists() and os.access(lanzador, os.X_OK) else "fallo", "lanzador del servidor MCP"))
+    resultados.append(("recursos empaquetados", *distribucion.verificar()))
     ok, detalle = probar_mcp()
     resultados.append(("servidor MCP", "ok" if ok else "fallo", detalle))
     resultados.append(("escáner de Hermes", *escanear_hermes()))
@@ -214,7 +215,7 @@ def instrucciones(id_: str) -> str:
 
 
 def instalar_skill_hermes(forzar: bool = False) -> Path:
-    origen = _raiz() / "adaptadores" / "hermes" / "mesa-de-rol" / "SKILL.md"
+    origen = distribucion.adaptadores() / "hermes" / "mesa-de-rol" / "SKILL.md"
     destino = Path(os.environ.get("HERMES_HOME", Path.home() / ".hermes")) / "skills" / "mesa-de-rol" / "SKILL.md"
     if destino.exists() and not forzar:
         raise FileExistsError(f"ya existe {destino} (usa --forzar para reemplazarla)")

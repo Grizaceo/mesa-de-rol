@@ -3,6 +3,8 @@ __pycache__/
 .venv/
 *.json.tmp
 .env
+build/
+*.egg-info/
 # Las imágenes generadas o descargadas pesan: se quedan locales.
 partidas/*/imagenes/*.png
 partidas/*/imagenes/*.jpg

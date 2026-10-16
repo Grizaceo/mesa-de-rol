@@ -12,10 +12,9 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, unquote, urlparse
 
-from . import estado
+from . import distribucion, estado
 from .texto import slug_valido
 
-VISOR = estado.RAIZ / "visor"
 mimetypes.add_type("text/javascript", ".js")
 mimetypes.add_type("image/svg+xml", ".svg")
 mimetypes.add_type("image/webp", ".webp")
@@ -72,10 +71,11 @@ class Manejador(BaseHTTPRequestHandler):
         url = urlparse(self.path)
         consulta = parse_qs(url.query)
         try:
+            visor = distribucion.visor()  # se resuelve por petición: el checkout manda si está
             if url.path in ("/", "/index.html"):
-                return self._archivo(VISOR, "index.html")
+                return self._archivo(visor, "index.html")
             if url.path.startswith("/visor/"):
-                return self._archivo(VISOR, url.path.removeprefix("/visor/"))
+                return self._archivo(visor, url.path.removeprefix("/visor/"))
             if url.path == "/api/partidas":
                 try:
                     activa = estado.slug_activo()

@@ -12,7 +12,7 @@ import shlex
 import sys
 from pathlib import Path
 
-from . import capacidades, dados, estado, harness, imagenes, informes, lecciones, reglas, sesion
+from . import capacidades, dados, distribucion, estado, harness, imagenes, informes, lecciones, reglas, sesion
 from .texto import con_signo, norm
 
 # Comandos que `turno --cambio` puede aplicar junto con el turno: todos cargan el estado con
@@ -139,6 +139,18 @@ def c_harness(args) -> None:
         print(harness.instrucciones(args.id))
     else:
         print(f"Skill instalada en {harness.instalar_skill_hermes(args.forzar)}")
+
+
+def c_recursos(args) -> None:
+    """La copia empaquetada de visor/, partidas/_plantilla/ y adaptadores/ (la usa el wheel)."""
+    if args.accion == "sync":
+        cambiadas = distribucion.sincronizar()
+        print("Recursos sincronizados: " + ", ".join(cambiadas) if cambiadas else "Los recursos ya estaban en sincronía.")
+    else:
+        estado_, detalle = distribucion.verificar()
+        print(f"{ {'ok': '✓', 'fallo': '✗', 'omitido': '–'}[estado_] } recursos empaquetados: {detalle}")
+        if estado_ == "fallo":
+            raise RuntimeError("la copia empaquetada está desincronizada")
 
 
 def c_contexto(args) -> None:
@@ -647,6 +659,10 @@ def _parser() -> argparse.ArgumentParser:
     e.add_argument("id", choices=[h["id"] for h in harness.HARNESSES])
     e = hsub.add_parser("instalar-hermes", help="instala la skill opcional en ~/.hermes/skills (fuera del repo)")
     e.add_argument("--forzar", action="store_true")
+    s = cmd("recursos", c_recursos, "recursos empaquetados del wheel: sync | verificar")
+    rsub = s.add_subparsers(dest="accion", required=True)
+    rsub.add_parser("sync", help="regenera mesa/recursos/ desde visor/, partidas/_plantilla/ y adaptadores/")
+    rsub.add_parser("verificar", help="comprueba que la copia empaquetada coincide con el repositorio")
     s = cmd("contexto", c_contexto, "contexto del director: lecciones, reglas de la casa, estado y últimos eventos")
     s.add_argument("--completo", action="store_true", help="incluye biblia, notas del director y reglamento")
     s.add_argument("--eventos", type=int, default=15)

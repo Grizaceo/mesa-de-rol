@@ -15,9 +15,22 @@ import shutil
 from datetime import datetime
 from pathlib import Path
 
+from . import distribucion
 from .texto import norm, slug_valido
 
-RAIZ = Path(os.environ.get("MESA_RAIZ") or Path(__file__).resolve().parent.parent)
+
+def _raiz_de_datos() -> Path:
+    """Dónde viven los datos mutables: `$MESA_RAIZ`, el checkout o el directorio del usuario."""
+    if os.environ.get("MESA_RAIZ"):
+        return Path(os.environ["MESA_RAIZ"]).expanduser()
+    checkout = distribucion.raiz_checkout()
+    if checkout is not None:
+        return checkout
+    datos = os.environ.get("XDG_DATA_HOME")
+    return (Path(datos).expanduser() if datos else Path.home() / ".local" / "share") / "mesa-de-rol"
+
+
+RAIZ = _raiz_de_datos()
 PLANTILLA = "_plantilla"
 
 
@@ -176,7 +189,7 @@ def nueva_partida(slug: str, titulo: str) -> Path:
     destino = dir_partidas() / slug
     if destino.exists():
         raise FileExistsError(f"ya existe {destino}")
-    shutil.copytree(dir_partidas() / PLANTILLA, destino)
+    shutil.copytree(distribucion.plantilla(), destino)
     datos = json.loads((destino / "partida.json").read_text(encoding="utf-8"))
     datos.update({"slug": slug, "titulo": titulo, "creada": ahora(), "version": 0})
     (destino / "partida.json").write_text(

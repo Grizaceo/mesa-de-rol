@@ -15,3 +15,8 @@ build-backend = "setuptools.build_meta"
 
 [tool.setuptools]
 packages = ["mesa"]
+
+# Copia empaquetada de los recursos inmutables (visor/, partidas/_plantilla/, adaptadores/).
+# Se regenera con `bin/mesa recursos sync`; tests/test_distribucion.py vigila que esté en sincronía.
+[tool.setuptools.package-data]
+mesa = ["recursos/**/*"]
