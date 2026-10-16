@@ -11,6 +11,7 @@ cómo arranca cada harness, en `guias/harnesses.md`.
 - **Hay dos vías equivalentes para las herramientas**, con el mismo motor y los mismos resultados:
   - **MCP:** el servidor `mesa` (`bin/mesa-mcp`), con las herramientas `retomar`, `contexto`, `estado`, `prueba`, `ataque`, `tirar`, `suerte`, `turno`, `pausar` y `comando`.
   - **CLI:** `bin/mesa <comando>` (o `python3 -m mesa <comando>`) desde la raíz del repo.
+  - La equivalencia vale para las **acciones de juego**. La administración del harness (`harness`), el visor (`servir`) y las importaciones externas (`documento --archivo`, `imagen generar`, `imagen biblioteca-agregar`, rutas/URLs en `imagen elegir`) son **solo de la CLI deliberada**: el MCP de juego las rechaza. Ver `guias/seguridad.md`.
 
   Usa MCP si tu harness lo cargó; si no, la CLI.
 - **Un solo narrador a la vez.** Para cambiar de harness, uno pausa y el otro retoma.

@@ -25,26 +25,11 @@ archivos de fuera de la partida, no una ruta concreta.
 - Las imágenes se eligen por id o archivo de `biblioteca/imagenes/`: lo que está ahí lo puso
   una persona, con su fuente y licencia anotadas (ver [`imagenes.md`](imagenes.md)).
 
-## Propuesta pendiente de aprobación: contrato AGENTS.md
+## Contrato AGENTS.md
 
-`AGENTS.md` dice hoy que «hay dos vías equivalentes para las herramientas, con el mismo motor
-y los mismos resultados». Sigue siendo válido para las acciones de juego, pero ya no para la
-administración: el MCP no la expone. Si quieres precisarlo en el contrato, este es el diff
-mínimo, **sin aplicar** (modificar `AGENTS.md` requiere aprobación explícita):
-
-```diff
-@@ Principios de portabilidad
-   - **Hay dos vías equivalentes para las herramientas**, con el mismo motor y los mismos resultados:
-     - **MCP:** el servidor `mesa` (`bin/mesa-mcp`), con las herramientas `retomar`, `contexto`,
-       `estado`, `prueba`, `ataque`, `tirar`, `suerte`, `turno`, `pausar` y `comando`.
-     - **CLI:** `bin/mesa <comando>` (o `python3 -m mesa <comando>`) desde la raíz del repo.
-+    - La equivalencia vale para las **acciones de juego**. La administración del harness
-+      (`harness`), el visor (`servir`) y las importaciones externas (`documento --archivo`,
-+      `imagen generar`, `imagen biblioteca-agregar`, rutas/URLs en `imagen elegir`) son
-+      **solo de la CLI deliberada**: el MCP de juego las rechaza. Ver `guias/seguridad.md`.
-
-   Usa MCP si tu harness lo cargó; si no, la CLI.
-```
-
-Mientras no se apruebe, la política igual se aplica: es una restricción de seguridad, no un
-cambio de reglamento, y la CLI conserva todas las operaciones.
+Desde el 2026-10-16 (aplicado con aprobación del titular), `AGENTS.md` precisa que la
+equivalencia CLI/MCP vale para las **acciones de juego**: la administración del harness
+(`harness`), el visor (`servir`) y las importaciones externas (`documento --archivo`,
+`imagen generar`, `imagen biblioteca-agregar`, rutas/URLs en `imagen elegir`) son **solo de la
+CLI deliberada**. La política se aplicaba igual desde el cierre de P0-02; el contrato ahora
+lo dice.
