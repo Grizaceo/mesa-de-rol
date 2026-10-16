@@ -38,6 +38,13 @@ bin/mesa servir                # http://127.0.0.1:8765
 No hay que instalar nada: Python ≥ 3.10, sin dependencias. `bin/mesa` es la CLI. Si se prefiere
 instalarla, `uv tool install .` o `pip install -e .` dejan disponible el comando `mesa`.
 
+**Dónde viven los datos.** Corriendo desde el repositorio, en `partidas/`, `lecciones/` y
+`biblioteca/` del propio repo. Con el paquete instalado (wheel), en `$MESA_RAIZ` si está definida,
+o en `$XDG_DATA_HOME/mesa-de-rol` (por defecto `~/.local/share/mesa-de-rol`). El visor, la
+plantilla y los adaptadores viajan dentro del paquete (`mesa/recursos/`): `bin/mesa recursos
+sync` regenera esa copia desde el repositorio y `mesa harness verificar` avisa si se
+desincronizó. El paquete nunca lleva partidas, lecciones ni bibliotecas personales.
+
 ## La CLI
 
 | Comando | Para qué |
@@ -63,9 +70,17 @@ instalarla, `uv tool install .` o `pip install -e .` dejan disponible el comando
 | `mesa retro` / `leccion agregar\|listar\|retirar\|incorporar\|fase` | Retrospectiva y lecciones |
 | `mesa servir` | El visor |
 | `mesa harness lista\|sync\|verificar\|instrucciones <id>` | Adaptadores por harness y su comprobación |
+| `mesa recursos sync\|verificar` | Copia de los recursos que viaja en el paquete instalable |
 
 Todos los comandos que tiran dados o cambian algo dejan un evento en
 `partidas/<slug>/eventos.jsonl`, y el visor lo recoge en menos de un segundo.
+
+**Un escritor a la vez.** Los comandos que escriben toman un candado por partida
+(`partidas/<slug>/.candado`): si otro proceso está a mitad de escritura, esperan unos segundos
+y, si sigue ocupado, avisan con un error legible en vez de pisar el cambio; las lecturas no
+esperan. El estado (`partida.json`) y la bitácora (`eventos.jsonl`) se guardan en una sola
+transacción con diario, así que un corte a mitad se rehace entero en la siguiente lectura o
+escritura, sin medio turno ni eventos duplicados.
 
 ## Estructura
 

@@ -10,10 +10,21 @@ import argparse
 import json
 import shlex
 import sys
+from contextlib import nullcontext
 from pathlib import Path
 
-from . import capacidades, dados, distribucion, estado, harness, imagenes, informes, lecciones, reglas, sesion
+from . import bloqueo, capacidades, dados, distribucion, estado, harness, imagenes, informes, lecciones, reglas, sesion
 from .texto import con_signo, norm
+
+# Comandos que escriben estado de la partida: `main` les toma el candado del archivo
+# (bloqueo.py) antes de cargar, para que dos procesos no se pisen a media transacción.
+# Los de solo lectura no lo toman: el visor puede leer mientras alguien escribe.
+ESCRIBEN = frozenset({
+    "retomar", "pausar", "tirar", "suerte", "prueba", "ataque", "dano",
+    "vida", "condicion", "habilidad", "vendaje", "descanso", "enemigo", "nivel",
+    "escena", "pnj", "pista", "documento", "trama", "misterio", "recurso", "reloj",
+    "turno", "regla", "nota", "imagen",
+})
 
 # Comandos que `turno --cambio` puede aplicar junto con el turno: todos cargan el estado con
 # _cargar y lo cierran con _cerrar, así que dentro de un lote comparten una sola carga y un
@@ -53,8 +64,26 @@ def _cerrar(args, slug: str, datos: dict, evento: dict, texto: str) -> None:
     if _lote is not None:
         _lote["hechos"].append((evento, texto))
         return
-    estado.guardar(slug, datos)
-    _imprimir(args, estado.registrar(slug, evento), texto)
+    # Snapshot y bitácora en una sola transacción: un corte no deja medio cambio.
+    (evento,) = estado.escribir(slug, datos=datos, eventos=[evento])
+    _imprimir(args, evento, texto)
+
+
+def _candado_de_escritura(args):
+    """Toma el candado de la partida para el comando completo, si el comando escribe."""
+    if args.comando not in ESCRIBEN:
+        return nullcontext()
+    if args.comando == "documento" and args.accion != "agregar":
+        return nullcontext()
+    if args.comando == "imagen" and args.accion in ("buscar", "biblioteca-agregar"):
+        return nullcontext()
+    try:
+        ruta = estado.ruta_candado(estado.slug_activo(args.partida))
+    except (ValueError, FileNotFoundError):
+        # Sin partida activa (p. ej. `nueva`) o con un slug que no existe: el comando
+        # fallará con su propio error; no hay estado que proteger.
+        return nullcontext()
+    return bloqueo.candado(ruta)
 
 
 def _recargar(datos: dict, recargas: set[str], quienes: list[dict] | None = None) -> list[tuple[str, str]]:
@@ -524,14 +553,14 @@ def c_turno(args) -> None:
         hechos = _lote["hechos"]
     finally:
         _lote = None
-    if hechos or pausada:
-        estado.guardar(slug, datos)
-    registrados = [estado.registrar(slug, evento) for evento, _ in hechos]
-    evento = estado.registrar(slug, {"tipo": "turno", "acciones": acciones, "resumen": args.resumen})
+    eventos = [evento for evento, _ in hechos] + [{"tipo": "turno", "acciones": acciones, "resumen": args.resumen}]
+    cambia_estado = bool(hechos) or pausada
+    registrados = estado.escribir(slug, datos=datos if cambia_estado else None, eventos=eventos)
+    cambios, evento = registrados[:-1], registrados[-1]
     numero = sum(1 for e in estado.leer_eventos(slug) if e.get("tipo") == "turno")
     avisos = informes.revisar(datos, acciones)
     if args.json:
-        print(json.dumps({"turno": evento, "cambios": registrados, "avisos": avisos}, ensure_ascii=False, indent=2))
+        print(json.dumps({"turno": evento, "cambios": cambios, "avisos": avisos}, ensure_ascii=False, indent=2))
         return
     lineas = [texto for _, texto in hechos] + [f"Turno {numero} registrado."]
     lineas += [f"⚠ {a}" for a in avisos]
@@ -785,7 +814,8 @@ def main(
             print(f"error: {motivo}", file=sys.stderr)
             return 1
         try:
-            args.funcion(args)
+            with _candado_de_escritura(args):
+                args.funcion(args)
         except (ValueError, FileNotFoundError, FileExistsError, RuntimeError) as e:
             print(f"error: {e}", file=sys.stderr)
             return 1

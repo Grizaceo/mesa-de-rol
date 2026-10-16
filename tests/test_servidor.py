@@ -4,7 +4,7 @@ import unittest
 import urllib.error
 import urllib.request
 
-from mesa import servidor
+from mesa import estado, servidor
 
 from apoyo import repo_temporal
 
@@ -49,6 +49,12 @@ class TestServidor(unittest.TestCase):
             with self.subTest(ruta=ruta):
                 self.assertEqual(self.get(ruta)[0], 404)
         self.assertEqual(self.get("/api/estado?p=..%2Fetc")[0], 400)
+
+    def test_un_conflicto_responde_503_json(self):
+        estado.ruta_diario("neva").write_text("{esto no es json", encoding="utf-8")
+        codigo, tipo, cuerpo = self.get("/api/estado?p=neva")
+        self.assertEqual((codigo, tipo), (503, "application/json"))
+        self.assertIn("diario", json.loads(cuerpo)["error"])
 
 
 if __name__ == "__main__":

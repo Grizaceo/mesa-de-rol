@@ -19,8 +19,7 @@ def retomar(slug: str, narrador: str | None = None) -> str:
     # Nunca se hereda el narrador anterior: la bitácora compara narradores y no debe mentir.
     actual = narrador or os.environ.get("MESA_NARRADOR") or "sin identificar"
     datos["sesion"] = {"narrador": actual, "desde": estado.ahora()}
-    estado.guardar(slug, datos)
-    estado.registrar(slug, {"tipo": "sesion_retomada", "narrador": actual, "narrador_anterior": anterior})
+    estado.escribir(slug, datos=datos, eventos=[{"tipo": "sesion_retomada", "narrador": actual, "narrador_anterior": anterior}])
 
     lineas = [f"# Retomar — {datos.get('titulo')} ({slug})", ""]
     lineas.append(f"Narra ahora: **{actual}**" + (f" (antes: {anterior})" if anterior and anterior != actual else ""))
@@ -41,8 +40,8 @@ def pausar(slug: str, pendiente: str, commit: bool = False) -> str:
     narrador = estado.narrador_actual(slug)
     datos["pausa"] = {"pendiente": pendiente, "cuando": estado.ahora(), "narrador": narrador}
     datos.pop("sesion", None)  # la sesión termina aquí; el próximo narrador se identifica al retomar
-    estado.guardar(slug, datos)
-    estado.registrar(slug, {"tipo": "sesion_pausada", "pendiente": pendiente, **({"narrador": narrador} if narrador else {})})
+    evento = {"tipo": "sesion_pausada", "pendiente": pendiente, **({"narrador": narrador} if narrador else {})}
+    estado.escribir(slug, datos=datos, eventos=[evento])
     salida = [f"⚠ {a}" for a in avisos]
     salida.append("Partida en pausa. Al retomar, en cualquier harness: `bin/mesa retomar --narrador \"<harness>/<modelo>\"`.")
     if commit:

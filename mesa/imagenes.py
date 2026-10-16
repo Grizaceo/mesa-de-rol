@@ -93,8 +93,8 @@ def _asignar(slug: str, datos: dict, archivo: str, modo: str, fuente: str, promp
     escena = datos.setdefault("escena", {})
     escena["imagen"] = archivo
     escena["imagen_fuente"] = {"modo": modo, "origen": fuente, **({"prompt": prompt} if prompt else {})}
-    estado.guardar(slug, datos)
-    return estado.registrar(slug, {"tipo": "imagen", "archivo": archivo, "modo": modo, "origen": fuente})
+    (evento,) = estado.escribir(slug, datos=datos, eventos=[{"tipo": "imagen", "archivo": archivo, "modo": modo, "origen": fuente}])
+    return evento
 
 
 def tarjeta_svg(slug: str) -> dict:

@@ -10,3 +10,7 @@ partidas/*/imagenes/*.png
 partidas/*/imagenes/*.jpg
 partidas/*/imagenes/*.jpeg
 partidas/*/imagenes/*.webp
+# Candado y diario de transacción: estado de ejecución, no de la historia.
+partidas/*/.candado
+partidas/*/.transaccion.json*
+partidas/*/eventos.jsonl.tmp

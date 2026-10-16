@@ -100,6 +100,8 @@ class Manejador(BaseHTTPRequestHandler):
             self._json({"error": str(e)}, 404)
         except ValueError as e:
             self._json({"error": str(e)}, 400)
+        except RuntimeError as e:  # conflicto o candado ocupado: un JSON legible, no una conexión rota
+            self._json({"error": str(e)}, 503)
 
 
 def crear(host: str = "127.0.0.1", puerto: int = 8765) -> ThreadingHTTPServer:
