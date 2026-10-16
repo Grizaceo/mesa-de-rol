@@ -132,10 +132,10 @@ def _exigir_entrada(ruta: Path, entrada: dict) -> None:
     if entrada.get("cache") != CACHE:
         raise ValueError(f"{ruta}: caché de otra versión ({entrada.get('cache')!r}); vuelve a actualizarla")
     fuente = entrada.get("fuente") or {}
-    if fuente.get("api") != "open5e" or fuente.get("documento") != DOCUMENTO:
+    if fuente.get("documento") != DOCUMENTO:
         raise ValueError(
             f"{ruta}: fuente equivocada ({fuente.get('api')!r}/{fuente.get('documento')!r}); "
-            f"solo se sirve open5e/{DOCUMENTO}"
+            f"solo se sirve el documento {DOCUMENTO}"
         )
     if not isinstance(entrada.get("datos"), dict):
         raise ValueError(f"{ruta}: entrada sin datos")

@@ -58,4 +58,6 @@ fecha por entrada, y los mapea al esquema interno de la mesa. El motor nunca sal
 lee esa caché y, si algo no está, avisa en vez de inventarlo. La red solo se toca con
 `fuentes buscar` y `fuentes actualizar` (una petición a la vez, timeout de 15 s, hasta 3
 intentos, sin reintentar errores HTTP). Cada respuesta se verifica contra el documento: un
-objeto de otra fuente se rechaza. La caché es regenerable y no viaja en git.
+objeto de otra fuente se rechaza. La caché es regenerable y no viaja en git. El cotejo de
+muestra contra el PDF oficial y qué está implementado, manual o no soportado viven en
+[`cobertura-2024.md`](cobertura-2024.md).

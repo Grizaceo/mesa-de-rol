@@ -11,4 +11,5 @@ por Wizards of the Coast.
 El catálogo local del SRD 2024 (`biblioteca/fuentes/`, regenerable con `bin/mesa fuentes
 actualizar`) se descarga a través de la API pública de [Open5e](https://open5e.com), filtrando
 por el documento `srd-2024`; cada entrada de la caché guarda su licencia, su permalink y la
-fecha de consulta.
+fecha de consulta. Las fixtures de `tests/fixtures/2024/` son extractos mínimos del SRD con su
+procedencia y esta misma atribución.

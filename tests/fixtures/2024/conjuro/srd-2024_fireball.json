@@ -1,0 +1,122 @@
+{
+  "cache": 1,
+  "fuente": {
+    "api": "open5e",
+    "api_version": "v2",
+    "endpoint": "spells",
+    "key": "srd-2024_fireball",
+    "documento": "srd-2024",
+    "licencia": "Creative Commons Attribution 4.0",
+    "permalink": "https://dnd.wizards.com/resources/systems-reference-document",
+    "url": "https://api.open5e.com/v2/spells/?document__key=srd-2024&key=srd-2024_fireball",
+    "descargado": "2026-10-16T19:08:42-03:00"
+  },
+  "datos": {
+    "key": "srd-2024_fireball",
+    "nombre": "Fireball",
+    "nivel": 3,
+    "escuela": "evocation",
+    "escuela_nombre": "Evocation",
+    "tiempo_de_lanzamiento": "action",
+    "alcance": {
+      "texto": "150 feet",
+      "valor": 150,
+      "unidad": "feet"
+    },
+    "componentes": {
+      "verbal": true,
+      "somatico": true,
+      "material": true,
+      "material_especificado": "a ball of bat guano and sulfur",
+      "material_gastado": false
+    },
+    "duracion": "instantaneous",
+    "concentracion": false,
+    "ritual": false,
+    "descripcion": "A bright streak flashes from you to a point you choose within range and then blossoms with a low roar into a fiery explosion. Each creature in a 20-foot-radius Sphere centered on that point makes a Dexterity saving throw, taking 8d6 Fire damage on a failed save or half as much damage on a successful one. Flammable objects in the area that aren't being worn or carried start burning.",
+    "niveles_superiores": "The damage increases by 1d6 for each spell slot level above 3.",
+    "ataque": false,
+    "salvacion": "dexterity",
+    "dano": {
+      "expresion": "8d6",
+      "tipos": [
+        "fire"
+      ]
+    },
+    "objetivo": {
+      "tipo": "creature",
+      "cantidad": 1
+    },
+    "forma": {
+      "tipo": "sphere",
+      "tamano": 20,
+      "unidad": "feet"
+    },
+    "clases": [
+      "srd-2024_sorcerer",
+      "srd-2024_wizard"
+    ],
+    "opciones_de_lanzamiento": [
+      {
+        "type": "slot_level_4",
+        "damage_roll": "9d6",
+        "target_count": null,
+        "duration": null,
+        "range": null,
+        "concentration": null,
+        "shape_size": null,
+        "desc": null
+      },
+      {
+        "type": "slot_level_5",
+        "damage_roll": "10d6",
+        "target_count": null,
+        "duration": null,
+        "range": null,
+        "concentration": null,
+        "shape_size": null,
+        "desc": null
+      },
+      {
+        "type": "slot_level_6",
+        "damage_roll": "11d6",
+        "target_count": null,
+        "duration": null,
+        "range": null,
+        "concentration": null,
+        "shape_size": null,
+        "desc": null
+      },
+      {
+        "type": "slot_level_7",
+        "damage_roll": "12d6",
+        "target_count": null,
+        "duration": null,
+        "range": null,
+        "concentration": null,
+        "shape_size": null,
+        "desc": null
+      },
+      {
+        "type": "slot_level_8",
+        "damage_roll": "13d6",
+        "target_count": null,
+        "duration": null,
+        "range": null,
+        "concentration": null,
+        "shape_size": null,
+        "desc": null
+      },
+      {
+        "type": "slot_level_9",
+        "damage_roll": "14d6",
+        "target_count": null,
+        "duration": null,
+        "range": null,
+        "concentration": null,
+        "shape_size": null,
+        "desc": null
+      }
+    ]
+  }
+}

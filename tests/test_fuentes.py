@@ -12,14 +12,18 @@ from __future__ import annotations
 
 import io
 import json
+import shutil
 import unittest
 import urllib.error
 from contextlib import redirect_stderr, redirect_stdout
+from pathlib import Path
 from unittest import mock
 
 from mesa import cli, fuentes
 
-from apoyo import repo_temporal
+from apoyo import REPO, repo_temporal
+
+FIXTURES = REPO / "tests" / "fixtures" / "2024"
 
 CONJURO = {
     "key": "srd-2024_bola-de-prueba",
@@ -256,6 +260,43 @@ class TestPolitica(unittest.TestCase):
         self.assertEqual(len(urls), 1)
         self.assertIn("document__key=srd-2024", urls[0])
         self.assertIn("limit=", urls[0])
+
+
+class TestFixtures(unittest.TestCase):
+    """La fixture mínima autorizada (P1.3) se sirve sin red y trae procedencia."""
+
+    CASOS = (("conjuro", "srd-2024_fireball"), ("condicion", "srd-2024_prone"))
+
+    def test_son_entradas_de_cache_con_licencia(self):
+        for tipo, clave in self.CASOS:
+            with self.subTest(clave=clave):
+                entrada = json.loads((FIXTURES / tipo / f"{clave}.json").read_text(encoding="utf-8"))
+                self.assertEqual(entrada["cache"], fuentes.CACHE)
+                self.assertEqual(entrada["fuente"]["documento"], fuentes.DOCUMENTO)
+                self.assertIn("Creative Commons", entrada["fuente"]["licencia"])
+                self.assertEqual(entrada["datos"]["key"], clave)
+
+    def test_se_sirven_offline_desde_la_cache(self):
+        with repo_temporal() as raiz:
+            for tipo, clave in self.CASOS:
+                destino = raiz / "biblioteca" / "fuentes" / "open5e" / "srd-2024" / tipo / f"{clave}.json"
+                destino.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copy2(FIXTURES / tipo / f"{clave}.json", destino)
+            with mock.patch.object(fuentes, "_leer_json", side_effect=AssertionError("sin red")):
+                conjuro = fuentes.obtener("conjuro", "srd-2024_fireball")
+                condicion = fuentes.obtener("condicion", "srd-2024_prone")
+            self.assertEqual(conjuro["nivel"], 3)
+            self.assertEqual(conjuro["dano"], {"expresion": "8d6", "tipos": ["fire"]})
+            self.assertEqual(conjuro["clases"], ["srd-2024_sorcerer", "srd-2024_wizard"])
+            self.assertIn("Restricted Movement", condicion["descripciones"][0]["texto"])
+            self.assertIn("within 5 feet", condicion["descripciones"][0]["texto"])
+
+    def test_el_conjuro_conserva_el_texto_cotejado(self):
+        datos = json.loads((FIXTURES / "conjuro" / "srd-2024_fireball.json").read_text(encoding="utf-8"))["datos"]
+        self.assertIn("A bright streak flashes from you", datos["descripcion"])
+        self.assertIn("8d6 Fire damage", datos["descripcion"])
+        self.assertEqual(datos["niveles_superiores"], "The damage increases by 1d6 for each spell slot level above 3.")
+        self.assertEqual(datos["componentes"]["material_especificado"], "a ball of bat guano and sulfur")
 
 
 class TestCli(unittest.TestCase):

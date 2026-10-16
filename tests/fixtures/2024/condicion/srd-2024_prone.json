@@ -1,0 +1,25 @@
+{
+  "cache": 1,
+  "fuente": {
+    "api": "srd-oficial",
+    "api_version": "SRD_CC_v5.2.1",
+    "endpoint": "transcripcion",
+    "key": "srd-2024_prone",
+    "documento": "srd-2024",
+    "licencia": "Creative Commons Attribution 4.0",
+    "permalink": "https://www.dndbeyond.com/srd",
+    "url": "https://media.dndbeyond.com/compendium-images/srd/5.2/SRD_CC_v5.2.1.pdf",
+    "descargado": "2026-10-16"
+  },
+  "datos": {
+    "key": "srd-2024_prone",
+    "nombre": "Prone",
+    "icono": null,
+    "descripciones": [
+      {
+        "texto": "While you have the Prone condition, you experience the following effects.\n**Restricted Movement.** Your only movement options are to crawl or to spend an amount of movement equal to half your Speed (round down) to right yourself and thereby end the condition. If your Speed is 0, you can't right yourself.\n**Attacks Affected.** You have Disadvantage on attack rolls. An attack roll against you has Advantage if the attacker is within 5 feet of you. Otherwise, that attack roll has Disadvantage.",
+        "documento": "srd-2024"
+      }
+    ]
+  }
+}
