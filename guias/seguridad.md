@@ -6,7 +6,7 @@ las acciones de mesa, los mismos efectos; lo que cambia es la autoridad.
 | Superficie | Puede |
 |---|---|
 | **MCP de juego** (`bin/mesa-mcp`) | Todo lo de jugar: `retomar`, `contexto`, `estado`, tiradas, ataques, vida, condiciones, escena, mundo, `turno`, `pausar`, `imagen ninguna`/`buscar`/`elegir` por id de biblioteca, `guardar`, `retro`, `leccion`. |
-| **CLI deliberada** (`bin/mesa ...`, la que teclea una persona) | Lo anterior **y** la administración e importaciones: `harness` (instalar la skill, regenerar adaptadores, verificar), `servir`, `documento agregar --archivo`, `imagen generar`, `imagen biblioteca-agregar` y rutas o URLs en `imagen elegir`. |
+| **CLI deliberada** (`bin/mesa ...`, la que teclea una persona) | Lo anterior **y** la administración e importaciones: `harness` (instalar la skill, regenerar adaptadores, verificar), `servir`, `documento agregar --archivo`, `imagen generar`, `imagen biblioteca-agregar`, rutas o URLs en `imagen elegir`, y el catálogo externo (`fuentes buscar` y `fuentes actualizar` salen a la red). |
 
 La política vive en `mesa/capacidades.py` y se aplica dos veces: al parsear el comando y,
 con el mismo examen, a cada cambio anidado de `turno --cambio`. No basta bloquear el primer
@@ -24,6 +24,9 @@ archivos de fuera de la partida, no una ruta concreta.
   `imagen elegir` con ruta o URL importa contenido nuevo. Ambas las decide una persona.
 - Las imágenes se eligen por id o archivo de `biblioteca/imagenes/`: lo que está ahí lo puso
   una persona, con su fuente y licencia anotadas (ver [`imagenes.md`](imagenes.md)).
+- `fuentes buscar` y `fuentes actualizar` salen a la red y copian datos de un servicio
+  externo a `biblioteca/fuentes/`; el motor lee esa caché local y nunca consulta por su
+  cuenta. Cada entrada guarda licencia, URL y fecha (ver [`fuente-srd.md`](fuente-srd.md)).
 
 ## Contrato AGENTS.md
 

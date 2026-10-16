@@ -48,7 +48,10 @@ def revisar(args: argparse.Namespace, perfil: str = CLI) -> str | None:
         return None
     comando = getattr(args, "comando", "")
     if comando not in DE_JUEGO:
-        return f"`{comando}` no es una acción de juego: la administración del repo y del harness va por la CLI"
+        return (
+            f"`{comando}` no es una acción de juego: la administración del repo, el harness "
+            "y el catálogo externo van por la CLI"
+        )
     for campo, motivo in BANDERAS.get(comando, {}).items():
         if getattr(args, campo, None):
             return f"`{comando} --{campo}` {motivo}: hazlo con la CLI, no desde el MCP"

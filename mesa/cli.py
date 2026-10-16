@@ -13,7 +13,7 @@ import sys
 from contextlib import nullcontext
 from pathlib import Path
 
-from . import bloqueo, capacidades, dados, distribucion, estado, harness, imagenes, informes, lecciones, reglas, sesion
+from . import bloqueo, capacidades, dados, distribucion, estado, fuentes, harness, imagenes, informes, lecciones, reglas, sesion
 from .texto import con_signo, norm
 
 # Comandos que escriben estado de la partida: `main` les toma el candado del archivo
@@ -180,6 +180,37 @@ def c_recursos(args) -> None:
         print(f"{ {'ok': '✓', 'fallo': '✗', 'omitido': '–'}[estado_] } recursos empaquetados: {detalle}")
         if estado_ == "fallo":
             raise RuntimeError("la copia empaquetada está desincronizada")
+
+
+def c_fuentes(args) -> None:
+    """Catálogo externo con procedencia: la red solo en `buscar` y `actualizar`."""
+    if args.accion == "listar":
+        documento = fuentes.documento_local()
+        if documento:
+            d = documento["datos"]
+            descargado = (documento["fuente"].get("descargado") or "")[:16].replace("T", " ")
+            print(f"Documento: {d['nombre']} ({d['key']}) · {d['licencia']} · descargado {descargado}")
+        entradas = fuentes.listar(args.tipo)
+        if not entradas:
+            print("La caché está vacía: `bin/mesa fuentes buscar <tipo> <texto>` y luego `actualizar`.")
+            return
+        for e in entradas:
+            print(f"{e['tipo']:<10} {e['key']:<40} {e['nombre'] or ''} · {e['licencia'] or '?'} · {e['descargado'] or '?'}")
+    elif args.accion == "buscar":
+        resultados = fuentes.buscar(args.tipo, args.texto)
+        if not resultados:
+            print(f"Sin resultados para «{args.texto}» en {fuentes.DOCUMENTO}.")
+            return
+        for r in resultados:
+            print(f"{r['key']}  {r['nombre']}")
+    elif args.accion == "actualizar":
+        entrada = fuentes.actualizar(args.tipo, args.clave)
+        fuente = entrada["fuente"]
+        destino = fuentes.ruta_entrada(args.tipo, args.clave).relative_to(estado.RAIZ)
+        print(f"{entrada['datos']['nombre']} ({args.clave}) → {destino}")
+        print(f"Fuente: open5e/{fuente['documento']} · licencia {fuente['licencia']} · descargado {fuente['descargado'][:16].replace('T', ' ')}")
+    else:
+        print(json.dumps(fuentes.obtener(args.tipo, args.clave), ensure_ascii=False, indent=2))
 
 
 def c_contexto(args) -> None:
@@ -693,6 +724,16 @@ def _parser() -> argparse.ArgumentParser:
     rsub = s.add_subparsers(dest="accion", required=True)
     rsub.add_parser("sync", help="regenera mesa/recursos/ desde visor/, partidas/_plantilla/ y adaptadores/")
     rsub.add_parser("verificar", help="comprueba que la copia empaquetada coincide con el repositorio")
+    s = cmd("fuentes", c_fuentes, "catálogo externo con procedencia (Open5e, documento srd-2024): listar | buscar | actualizar | ver")
+    fsub = s.add_subparsers(dest="accion", required=True)
+    e = fsub.add_parser("listar", help="lo que hay en la caché local, con licencia y fecha")
+    e.add_argument("tipo", nargs="?", choices=sorted(fuentes.TIPOS))
+    e = fsub.add_parser("buscar", help="busca en Open5e (sale a la red) y muestra keys para actualizar")
+    e.add_argument("tipo", choices=sorted(fuentes.TIPOS)); e.add_argument("texto")
+    e = fsub.add_parser("actualizar", help="copia un objeto a la caché con su procedencia (sale a la red)")
+    e.add_argument("tipo", choices=sorted(fuentes.TIPOS)); e.add_argument("clave")
+    e = fsub.add_parser("ver", help="los datos cacheados, sin red")
+    e.add_argument("tipo", choices=sorted(fuentes.TIPOS)); e.add_argument("clave")
     s = cmd("contexto", c_contexto, "contexto del director: lecciones, reglas de la casa, estado y últimos eventos")
     s.add_argument("--completo", action="store_true", help="incluye biblia, notas del director y reglamento")
     s.add_argument("--eventos", type=int, default=15)

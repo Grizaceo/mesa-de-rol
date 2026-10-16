@@ -49,3 +49,13 @@ Las secciones del SRD se citan por su nombre en inglés para poder buscarlas en 
 - **Clases, especies, conjuros y objetos mágicos.** Las historias de la mesa empiezan sin magia, y se pueden añadir por biblia si una historia la necesita.
 - **Acciones adicionales, reacciones y ataques de oportunidad.** Sobran en una mesa de principiantes; el ataque de oportunidad se puede activar como regla de la casa.
 - **Dados de golpe** y la tabla de puntuaciones 1–20, porque el bono ya es el atributo.
+
+## Catálogo externo (Open5e)
+
+Desde P1.2, `bin/mesa fuentes` copia objetos del SRD 2024 desde la API de Open5e
+(`document__key=srd-2024`) a `biblioteca/fuentes/open5e/`, con licencia, permalink, URL y
+fecha por entrada, y los mapea al esquema interno de la mesa. El motor nunca sale a la red:
+lee esa caché y, si algo no está, avisa en vez de inventarlo. La red solo se toca con
+`fuentes buscar` y `fuentes actualizar` (una petición a la vez, timeout de 15 s, hasta 3
+intentos, sin reintentar errores HTTP). Cada respuesta se verifica contra el documento: un
+objeto de otra fuente se rechaza. La caché es regenerable y no viaja en git.

@@ -14,3 +14,5 @@ partidas/*/imagenes/*.webp
 partidas/*/.candado
 partidas/*/.transaccion.json*
 partidas/*/eventos.jsonl.tmp
+# La caché del catálogo externo se regenera con `bin/mesa fuentes actualizar`: no viaja en git.
+biblioteca/fuentes/

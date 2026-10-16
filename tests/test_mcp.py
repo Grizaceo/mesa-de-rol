@@ -124,6 +124,18 @@ class TestCapacidades(unittest.TestCase):
                     self.assertIn("no es una acción de juego", texto)
             self.assertFalse((Path(hermes) / "skills").exists())
 
+    def test_fuentes_externas_solo_por_cli(self):
+        for args in (
+            ["fuentes", "actualizar", "conjuro", "srd-2024_fireball"],
+            ["fuentes", "buscar", "conjuro", "bola"],
+            ["fuentes", "listar"],
+            ["fuentes", "ver", "conjuro", "srd-2024_fireball"],
+        ):
+            with self.subTest(args=args):
+                error, texto = llamar("comando", {"args": args})
+                self.assertTrue(error, args)
+                self.assertIn("no es una acción de juego", texto)
+
     def test_centinela_externo_no_se_publica_por_documento_ni_anidado(self):
         with repo_temporal() as raiz, tempfile.TemporaryDirectory() as fuera:
             centinela = Path(fuera) / "secreto.txt"
