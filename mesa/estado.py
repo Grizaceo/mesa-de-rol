@@ -140,19 +140,31 @@ def registrar(slug: str, evento: dict) -> dict:
 
 
 def buscar(datos: dict, quien: str) -> tuple[str, dict]:
-    """Encuentra un personaje o enemigo por id o nombre (sin tildes; acepta prefijo único)."""
+    """Encuentra un personaje o enemigo por id o nombre (sin tildes; acepta prefijo único).
+
+    Un selector vacío o solo espacios es un error: sin esta guarda, `clave in nombres`
+    daría positivo en cualquier ficha sin id y el primer personaje recibiría la acción.
+    La coincidencia exacta gana al prefijo; si hay varias exactas o varias por prefijo,
+    el error dice cuáles para elegir por id.
+    """
     clave = norm(quien)
-    candidatos: list[tuple[str, dict]] = []
+    if not clave:
+        raise ValueError("el selector está vacío: dime el nombre o el id del personaje")
+    exactos: list[tuple[str, dict]] = []
+    por_prefijo: list[tuple[str, dict]] = []
     for tipo, lista in (("personaje", datos.get("personajes", [])), ("enemigo", datos.get("enemigos", []))):
         for ficha in lista:
             nombres = {norm(ficha.get("id", "")), norm(ficha.get("nombre", ""))}
             if clave in nombres:
-                return tipo, ficha
-            if any(n.startswith(clave) for n in nombres if n):
-                candidatos.append((tipo, ficha))
+                exactos.append((tipo, ficha))
+            elif any(n.startswith(clave) for n in nombres if n):
+                por_prefijo.append((tipo, ficha))
+    if len(exactos) == 1:
+        return exactos[0]
+    candidatos = exactos or por_prefijo
+    todos = [f["nombre"] for f in datos.get("personajes", []) + datos.get("enemigos", [])]
     if len(candidatos) == 1:
         return candidatos[0]
-    todos = [f["nombre"] for f in datos.get("personajes", []) + datos.get("enemigos", [])]
     if candidatos:
         raise ValueError(f"{quien!r} es ambiguo: {', '.join(f['nombre'] for _, f in candidatos)}")
     raise ValueError(f"no encuentro a {quien!r}; hay: {', '.join(todos) or 'nadie'}")

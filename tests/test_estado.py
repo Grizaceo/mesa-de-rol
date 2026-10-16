@@ -19,6 +19,46 @@ def correr(*args):
     return codigo, salida.getvalue(), errores.getvalue()
 
 
+class TestSelectores(unittest.TestCase):
+    """P0-01: un selector vacío o ambiguo no puede elegir a nadie por accidente."""
+
+    def _datos(self):
+        return {"personajes": [{"nombre": "Anabella", "vida": 5}, {"nombre": "Ana", "vida": 5}]}
+
+    def test_selector_vacio_o_solo_espacios_es_error(self):
+        for quien in ("", "   ", "\t", " \n "):
+            with self.subTest(quien=quien), self.assertRaises(ValueError):
+                estado.buscar(self._datos(), quien)
+
+    def test_selector_vacio_no_muta_la_partida(self):
+        with repo_temporal():
+            antes = (estado.dir_partida("neva") / "partida.json").read_text(encoding="utf-8")
+            codigo, _, errores = correr("vida", "", "-1")
+            self.assertEqual(codigo, 1)
+            self.assertIn("vacío", errores)
+            self.assertEqual((estado.dir_partida("neva") / "partida.json").read_text(encoding="utf-8"), antes)
+            self.assertEqual(estado.buscar(estado.cargar("neva"), "Jualjin")[1]["vida"], 14)
+
+    def test_coincidencia_exacta_gana_al_prefijo(self):
+        datos = self._datos()
+        self.assertEqual(estado.buscar(datos, "Ana")[1]["nombre"], "Ana")
+        self.assertEqual(estado.buscar(datos, "Anab")[1]["nombre"], "Anabella")
+
+    def test_prefijo_ambiguo_es_error_inequivoco(self):
+        with self.assertRaises(ValueError) as e:
+            estado.buscar(self._datos(), "An")
+        self.assertIn("ambiguo", str(e.exception))
+        self.assertIn("Ana", str(e.exception))
+        self.assertIn("Anabella", str(e.exception))
+
+    def test_quitar_enemigo_sin_nombre_no_borra_al_primero(self):
+        with repo_temporal():
+            correr("enemigo", "agregar", "Rata", "--plantilla", "rata")
+            codigo, _, _ = correr("enemigo", "quitar")
+            self.assertEqual(codigo, 1)
+            self.assertEqual(len(estado.cargar("neva")["enemigos"]), 1)
+
+
 class TestEstado(unittest.TestCase):
     def test_guardar_sube_version_y_registrar_numera(self):
         with repo_temporal():
