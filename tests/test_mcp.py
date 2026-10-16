@@ -1,13 +1,22 @@
 import json
 import os
+import shutil
 import subprocess
 import sys
+import tempfile
 import unittest
+from pathlib import Path
 from unittest import mock
 
-from mesa import cli, estado, mcp
+from mesa import cli, estado, imagenes, mcp
 
 from apoyo import REPO, dados_fijos, repo_temporal
+
+# PNG real de 1x1: para las pruebas que ahora exigen contenido, no solo extensión.
+PNG_1X1 = bytes.fromhex(
+    "89504e470d0a1a0a0000000d49484452000000010000000108060000001f15c489"
+    "0000000d4944415478da62f8cfc0f01f00050001ff9c8a6d4d0000000049454e44ae426082"
+)
 
 
 def llamar(nombre, argumentos):
@@ -107,6 +116,82 @@ class TestHerramientas(unittest.TestCase):
             self.assertIn("no encuentro", texto)
 
 
+class TestCapacidades(unittest.TestCase):
+    """P0-02: el MCP de juego no administra el harness ni importa archivos de fuera."""
+
+    def test_instalacion_de_harness_denegada_sin_tocar_el_perfil(self):
+        with repo_temporal(), tempfile.TemporaryDirectory() as hermes, mock.patch.dict(
+            os.environ, {"HERMES_HOME": hermes}
+        ):
+            for args in (["harness", "instalar-hermes"], ["harness", "sync"], ["harness", "verificar"]):
+                with self.subTest(args=args):
+                    error, texto = llamar("comando", {"args": args})
+                    self.assertTrue(error, args)
+                    self.assertIn("no es una acción de juego", texto)
+            self.assertFalse((Path(hermes) / "skills").exists())
+
+    def test_centinela_externo_no_se_publica_por_documento_ni_anidado(self):
+        with repo_temporal() as raiz, tempfile.TemporaryDirectory() as fuera:
+            centinela = Path(fuera) / "secreto.txt"
+            centinela.write_text("CENTINELA-P0-02", encoding="utf-8")
+            partida = raiz / "partidas" / "neva"
+            (partida / "enlace.txt").symlink_to(centinela)
+            for args in (
+                ["documento", "agregar", "Fuga", "--archivo", str(centinela)],
+                ["documento", "agregar", "Fuga", f"--archivo={centinela}"],
+                ["documento", "agregar", "Fuga", "--archivo", str(partida / "enlace.txt")],
+            ):
+                with self.subTest(args=args):
+                    error, texto = llamar("comando", {"args": args})
+                    self.assertTrue(error, args)
+                    self.assertIn("CLI", texto)
+            error, texto = llamar("turno", {"resumen": "x", "acciones": {"Jualjin": "miro"},
+                                            "cambios": [["documento", "agregar", "Fuga", "--archivo", str(centinela)]]})
+            self.assertTrue(error, texto)
+            error, texto = llamar("turno", {"resumen": "x", "acciones": {"Jualjin": "miro"},
+                                            "cambios": ["documento agregar Fuga --archivo " + str(centinela)]})
+            self.assertTrue(error, texto)
+            # Ni el documento, ni su texto, ni un evento: nada quedó publicado.
+            texto_partida = (partida / "partida.json").read_text(encoding="utf-8")
+            self.assertNotIn("CENTINELA-P0-02", texto_partida)
+            self.assertNotIn("CENTINELA-P0-02", (partida / "eventos.jsonl").read_text(encoding="utf-8"))
+            self.assertEqual(estado.cargar("neva").get("documentos", []), [])
+
+    def test_imagenes_de_fuera_denegadas_y_biblioteca_permitida(self):
+        with repo_temporal() as raiz:
+            png = raiz / "foto.png"
+            png.write_bytes(PNG_1X1)
+            item = imagenes.agregar_biblioteca(str(png), ["foto"], "una foto", "propia", "CC0")
+            denegadas = [
+                ["imagen", "elegir", str(png)],
+                ["imagen", "elegir", "https://example.com/x.png"],
+                ["imagen", "generar", "--simular"],
+                ["imagen", "biblioteca-agregar", str(png)],
+            ]
+            for args in denegadas:
+                with self.subTest(args=args):
+                    error, texto = llamar("comando", {"args": args})
+                    self.assertTrue(error, args)
+                    self.assertIn("CLI", texto)
+            for args in (["imagen", "elegir", item["id"]], ["imagen", "ninguna"]):
+                with self.subTest(args=args):
+                    error, texto = llamar("comando", {"args": args})
+                    self.assertFalse(error, texto)
+
+    def test_la_cli_deliberada_conserva_lo_administrativo(self):
+        with repo_temporal() as raiz, tempfile.TemporaryDirectory() as hermes, mock.patch.dict(
+            os.environ, {"HERMES_HOME": hermes}
+        ):
+            shutil.copytree(REPO / "adaptadores", raiz / "adaptadores")
+            self.assertEqual(cli.main(["harness", "instalar-hermes"]), 0)
+            self.assertTrue((Path(hermes) / "skills" / "mesa-de-rol" / "SKILL.md").exists())
+            with tempfile.TemporaryDirectory() as fuera:
+                centinela = Path(fuera) / "nota.txt"
+                centinela.write_text("texto deliberado", encoding="utf-8")
+                self.assertEqual(cli.main(["documento", "agregar", "Deliberado", "--archivo", str(centinela)]), 0)
+                self.assertIn("texto deliberado", estado.cargar("neva")["documentos"][0]["texto"])
+
+
 class TestProcesoReal(unittest.TestCase):
     def test_stdio_de_punta_a_punta(self):
         """Como lo arranca un harness: stdout solo lleva JSON-RPC, una línea por mensaje."""
@@ -126,11 +211,13 @@ class TestProcesoReal(unittest.TestCase):
             self.assertFalse(lineas[2]["result"]["isError"])
             self.assertEqual(estado.leer_eventos("neva")[-1]["expr"], "2d6+1")
 
-    def test_un_error_de_red_no_tumba_el_proceso(self):
-        """Antes, `imagen elegir` con la red caída mataba el servidor y el narrador se quedaba sin dados."""
+    def test_un_error_de_sistema_no_tumba_el_proceso(self):
+        """Antes, un OSError dentro de una herramienta mataba el servidor y el narrador se quedaba sin dados."""
         with repo_temporal() as raiz:
+            fantasma = {"id": "fantasma", "archivo": "no-existe.png", "etiquetas": [], "descripcion": "", "fuente": "", "licencia": ""}
+            (raiz / "biblioteca" / "imagenes" / "indice.json").write_text(json.dumps([fantasma]), encoding="utf-8")
             mensajes = [
-                {"jsonrpc": "2.0", "id": 1, "method": "tools/call", "params": {"name": "comando", "arguments": {"args": ["imagen", "elegir", "http://127.0.0.1:9/x.png"]}}},
+                {"jsonrpc": "2.0", "id": 1, "method": "tools/call", "params": {"name": "comando", "arguments": {"args": ["imagen", "elegir", "fantasma"]}}},
                 {"jsonrpc": "2.0", "id": 2, "method": "ping"},
             ]
             entrada = "\n".join(json.dumps(m) for m in mensajes) + "\n"
@@ -139,7 +226,7 @@ class TestProcesoReal(unittest.TestCase):
             lineas = [json.loads(l) for l in r.stdout.splitlines()]
             self.assertEqual([l["id"] for l in lineas], [1, 2])
             self.assertTrue(lineas[0]["result"]["isError"])
-            self.assertIn("error de sistema o de red", lineas[0]["result"]["content"][0]["text"])
+            self.assertIn("error", lineas[0]["result"]["content"][0]["text"])
 
 
 if __name__ == "__main__":

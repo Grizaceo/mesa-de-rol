@@ -12,7 +12,7 @@ import shlex
 import sys
 from pathlib import Path
 
-from . import dados, estado, harness, imagenes, informes, lecciones, reglas, sesion
+from . import capacidades, dados, estado, harness, imagenes, informes, lecciones, reglas, sesion
 from .texto import con_signo, norm
 
 # Comandos que `turno --cambio` puede aplicar junto con el turno: todos cargan el estado con
@@ -25,6 +25,9 @@ CAMBIOS = (
 
 # Lote en curso de `turno --cambio`: {"slug", "datos", "hechos": [(evento, texto)]}.
 _lote: dict | None = None
+
+# Perfil de capacidades de esta ejecución: la CLI completa o el MCP de juego (ver capacidades.py).
+_perfil = capacidades.CLI
 
 
 def _bono(texto: str) -> tuple[int, str]:
@@ -485,9 +488,13 @@ def _parsear_cambio(texto: str) -> argparse.Namespace:
     if not partes or partes[0] not in CAMBIOS:
         raise ValueError(f"cambio no permitido: {texto!r} (valen: {', '.join(CAMBIOS)})")
     try:
-        return _parser().parse_args(partes)
+        cambio = _parser().parse_args(partes)
     except SystemExit:
         raise ValueError(f"cambio inválido: {texto!r}") from None
+    motivo = capacidades.revisar(cambio, _perfil)
+    if motivo:
+        raise ValueError(f"cambio no permitido: {motivo}")
+    return cambio
 
 
 def c_turno(args) -> None:
@@ -542,6 +549,11 @@ def c_imagen(args) -> None:
         e = imagenes.tarjeta_svg(slug)
         _imprimir(args, e, f"Tarjeta de escena: {e['archivo']}")
     elif args.accion == "elegir":
+        if _perfil == capacidades.JUEGO and not capacidades.de_biblioteca(args.fuente):
+            raise ValueError(
+                "desde el MCP solo se eligen imágenes de la biblioteca curada (id o archivo); "
+                "las rutas y las URLs van por la CLI"
+            )
         e = imagenes.elegir(slug, args.fuente)
         _imprimir(args, e, f"Imagen elegida: {e['archivo']} ({e['origen']})")
     elif args.accion == "buscar":
@@ -739,17 +751,31 @@ def _parser() -> argparse.ArgumentParser:
     return p
 
 
-def main(argv: list[str] | None = None, prohibidos: frozenset[str] = frozenset()) -> int:
-    args = _parser().parse_args(argv)
-    if args.comando in prohibidos:
-        print(f"error: `{args.comando}` no se puede usar desde aquí", file=sys.stderr)
-        return 1
+def main(
+    argv: list[str] | None = None,
+    prohibidos: frozenset[str] = frozenset(),
+    perfil: str = capacidades.CLI,
+) -> int:
+    """Ejecuta un comando. `perfil=capacidades.JUEGO` aplica la política del MCP de juego."""
+    global _perfil
+    anterior, _perfil = _perfil, perfil
     try:
-        args.funcion(args)
-    except (ValueError, FileNotFoundError, FileExistsError, RuntimeError) as e:
-        print(f"error: {e}", file=sys.stderr)
-        return 1
-    except OSError as e:  # red caída, permisos, disco: un error legible, no un traceback
-        print(f"error de sistema o de red: {e}", file=sys.stderr)
-        return 1
-    return 0
+        args = _parser().parse_args(argv)
+        if args.comando in prohibidos:
+            print(f"error: `{args.comando}` no se puede usar desde aquí", file=sys.stderr)
+            return 1
+        motivo = capacidades.revisar(args, _perfil)
+        if motivo:
+            print(f"error: {motivo}", file=sys.stderr)
+            return 1
+        try:
+            args.funcion(args)
+        except (ValueError, FileNotFoundError, FileExistsError, RuntimeError) as e:
+            print(f"error: {e}", file=sys.stderr)
+            return 1
+        except OSError as e:  # red caída, permisos, disco: un error legible, no un traceback
+            print(f"error de sistema o de red: {e}", file=sys.stderr)
+            return 1
+        return 0
+    finally:
+        _perfil = anterior

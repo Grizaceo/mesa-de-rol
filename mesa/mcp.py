@@ -17,7 +17,7 @@ import shlex
 import sys
 from contextlib import redirect_stderr, redirect_stdout
 
-from . import __version__, cli
+from . import __version__, capacidades, cli
 
 VERSIONES = ("2025-06-18", "2025-03-26", "2024-11-05")
 PROHIBIDOS = frozenset({"servir"})  # bloquearía el servidor
@@ -25,7 +25,8 @@ PROHIBIDOS = frozenset({"servir"})  # bloquearía el servidor
 INSTRUCCIONES = (
     "Herramientas de la mesa de rol. Eres el director de juego: sigue AGENTS.md del repo. "
     "Empieza con `retomar` (indica tu harness/modelo como narrador), tira siempre con estas "
-    "herramientas, registra cada turno con `turno` y al parar usa `pausar` con lo que queda pendiente."
+    "herramientas, registra cada turno con `turno` y al parar usa `pausar` con lo que queda pendiente. "
+    "Este MCP solo juega: la administración del harness y las importaciones de archivos de fuera van por la CLI."
 )
 
 _PARTIDA = {"type": "string", "description": "Slug de la partida; por defecto, la activa."}
@@ -136,7 +137,10 @@ HERRAMIENTAS = [
             "Cualquier otro comando de la CLI `mesa`, como lista de argumentos. Comandos: vida, condicion, habilidad, "
             "vendaje, descanso, enemigo, nivel, escena, pnj, pista, documento, trama, misterio, recurso, reloj, regla, "
             "nota, revisar, imagen, guardar, retro, leccion, partidas, usar, nueva. Ejemplos: [\"vida\", \"Jualjin\", \"-3\"], "
-            "[\"escena\", \"posicion\", \"Crisljin\", \"en la popa, a 4 m\"], [\"pnj\", \"Anya\", \"--nota\", \"...\"]."
+            "[\"escena\", \"posicion\", \"Crisljin\", \"en la popa, a 4 m\"], [\"pnj\", \"Anya\", \"--nota\", \"...\"]. "
+            "No disponibles aquí por ser administración del repo o importación externa: harness, servir, "
+            "documento --archivo, imagen generar, imagen biblioteca-agregar y las rutas o URLs de imagen elegir "
+            "(desde aquí solo ids o archivos de la biblioteca curada). Esas van por la CLI, a mano."
         ),
         "inputSchema": {"type": "object", "required": ["args"], "properties": {
             "args": {"type": "array", "items": {"type": "string"}, "minItems": 1}, "partida": _PARTIDA}},
@@ -198,7 +202,7 @@ def ejecutar(args: list[str]) -> tuple[bool, str]:
     salida, errores = io.StringIO(), io.StringIO()
     with redirect_stdout(salida), redirect_stderr(errores):
         try:
-            codigo = cli.main(args, prohibidos=PROHIBIDOS)
+            codigo = cli.main(args, prohibidos=PROHIBIDOS, perfil=capacidades.JUEGO)
         except SystemExit as e:  # argparse: argumentos inválidos
             codigo = e.code if isinstance(e.code, int) else 1
         except Exception as e:  # el servidor nunca muere por un comando: el narrador se quedaría sin dados

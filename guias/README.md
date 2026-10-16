@@ -14,3 +14,4 @@
 | [`lecciones.md`](lecciones.md) | Director | Cómo mejora cada historia con lo aprendido en la anterior |
 | [`harnesses.md`](harnesses.md) | Director | Narrar desde Claude Code, Codex, Hermes, OpenCode, Devin, Gemini CLI o Cursor, y cambiar entre ellos |
 | [`fuente-srd.md`](fuente-srd.md) | Curiosos | Qué regla sale de qué sección del SRD 5.2.1 y qué es propio |
+| [`seguridad.md`](seguridad.md) | Director | Qué puede el MCP de juego y qué solo la CLI: administración, importaciones y por qué |
