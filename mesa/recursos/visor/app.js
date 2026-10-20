@@ -348,7 +348,8 @@ function pintarZona(forzar = false) {
   }
   // Si la proyección ya está en caché y sigue valiendo, se pinta al instante; si hay
   // que pedirla, se pinta el texto ya y el SVG en cuanto llegue.
-  if (!forzar && app.firmaZona && app.firmaZonaMapa === app.firmaZona && !app.zonaPendiente) {
+  const firmaActual = JSON.stringify([PARAMETROS_ZONA().toString(), app.firmaZonaMapa]);
+  if (!forzar && app.proyeccion && app.firmaZona === firmaActual && !app.zonaPendiente) {
     return pintarZonaCon(app.proyeccion);
   }
   zona.innerHTML = html + '<p class="texto-3">Calculando la zona…</p>';

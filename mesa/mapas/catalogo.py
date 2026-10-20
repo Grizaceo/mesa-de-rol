@@ -26,7 +26,11 @@ from .base import (
 from .zona import (
     nueva_zona,
     poner_luz,
+    reubicar,
+    semantica_terreno,
 )
+
+from .generadores import generar_zona
 
 from .mundo import (
     _id_lugar,
@@ -462,3 +466,133 @@ def cargar_mapa_catalogo(datos: dict, ident: str, *, slug: str | None = None, no
         "columnas": len(mapa["filas"][0]), "filas": len(mapa["filas"]),
         "fondo": mapa.get("fondo"),
     }
+
+
+def _buscar_catalogo_por_texto(texto: str) -> dict | None:
+    q = norm(texto)
+    if not q:
+        return None
+    candidatos = []
+    for item in leer_catalogo_mapas():
+        if item.get("ambito") != "zona":
+            continue
+        nom = norm(item.get("nombre", ""))
+        ident = norm(item.get("id", "")).replace("-", " ")
+        palabras_id = [p for p in ident.split() if len(p) > 2]
+        if (nom and nom in q) or (ident and ident in q) or (len(palabras_id) >= 2 and all(p in q for p in palabras_id)):
+            candidatos.append((len(nom or ident), item))
+    if not candidatos:
+        return None
+    candidatos.sort(key=lambda x: x[0], reverse=True)
+    return candidatos[0][1]
+
+
+def _inferir_tipo_zona(texto: str) -> str:
+    q = norm(texto)
+    for palabras, tipo in (
+        (("posada", "taberna", "habitacion", "casa", "salon", "gremio", "causa", "despacho", "interior", "tienda"), "taberna"),
+        (("puente", "rio", "vado", "muelle"), "puente"),
+        (("bosque", "colina", "camino", "sendero", "campo", "claro"), "bosque"),
+        (("cueva", "mina", "caverna", "gruta"), "cueva"),
+        (("cripta", "mazmorra", "sotano", "celda", "ruina", "tumba"), "mazmorra"),
+    ):
+        if any(p in q for p in palabras):
+            return tipo
+    return "calle"
+
+
+def _celdas_transitables(mapa: dict, ocupadas: set[str]) -> list[str]:
+    filas = mapa.get("filas") or []
+    if not filas:
+        return []
+    alto, ancho = len(filas), len(filas[0])
+    cx, cy = (ancho - 1) / 2.0, (alto - 1) / 2.0
+    preferidas = []
+    otras = []
+    for f_idx, fila in enumerate(filas):
+        for c_idx, ch in enumerate(fila):
+            if ch == " " or ch.isdigit():
+                continue
+            celda = nombre_celda(c_idx, f_idx)
+            if celda in ocupadas:
+                continue
+            sem = semantica_terreno(mapa, ch)
+            if sem.get("bloquea_paso"):
+                continue
+            dist = abs(c_idx - cx) + abs(f_idx - cy)
+            if ch == "." and not sem.get("dificil"):
+                preferidas.append((dist, celda))
+            else:
+                otras.append((dist, celda))
+    preferidas.sort()
+    otras.sort()
+    return [c for _, c in preferidas] + [c for _, c in otras]
+
+
+def asegurar_mapa_escena(datos: dict, slug: str | None = None) -> list[tuple[dict, str]]:
+    """Garantiza que una escena nueva o un movimiento conserve cuadrícula, casillas y lugar del mundo."""
+    hechos: list[tuple[dict, str]] = []
+    escena = datos.setdefault("escena", {})
+    texto_escena = f"{escena.get('lugar', '')} {escena.get('titulo', '')}".strip()
+    q_escena = norm(texto_escena)
+
+    mundo = datos.get("mundo") or {}
+    if mundo.get("lugares") and q_escena:
+        coincidencias = []
+        for l in mundo["lugares"]:
+            nom_l = norm(l.get("nombre", ""))
+            id_l = norm(l.get("id", "")).replace("-", " ")
+            if (nom_l and nom_l in q_escena) or (id_l and id_l in q_escena):
+                coincidencias.append((len(nom_l or id_l), l))
+        if coincidencias:
+            coincidencias.sort(key=lambda x: x[0], reverse=True)
+            elegido = coincidencias[0][1]
+            if mundo.get("actual") != elegido["id"]:
+                ir_a(datos, elegido["nombre"])
+                hechos.append((
+                    {"tipo": "mundo", "accion": "aqui", "id": elegido["id"], "nombre": elegido["nombre"]},
+                    f"Ahora están en: {elegido['nombre']}",
+                ))
+
+    if not escena.get("mapa"):
+        nombre_mapa = escena.get("lugar") or escena.get("titulo") or "Zona"
+        del_catalogo = _buscar_catalogo_por_texto(texto_escena)
+        if del_catalogo is not None:
+            _, info = cargar_mapa_catalogo(datos, del_catalogo["id"], slug=slug, nombre=nombre_mapa)
+            hechos.append((
+                {"tipo": "mapa", "accion": "cargar", **info},
+                f"Mapa de zona cargado ({info['id']}, {info['columnas']}×{info['filas']} casillas).",
+            ))
+        else:
+            tipo = _inferir_tipo_zona(texto_escena)
+            luz = "penumbra" if "noche" in norm(escena.get("hora", "")) else "brillante"
+            semilla = f"{slug or datos.get('slug', 'mesa')}-{escena.get('numero', 1)}-{nombre_mapa}"
+            mapa = generar_zona(tipo, semilla=semilla, nombre=nombre_mapa, luz=luz)
+            escena["mapa"] = mapa
+            filas = mapa["filas"]
+            hechos.append((
+                {"tipo": "mapa", "accion": "generar", "generador": tipo, "semilla": semilla,
+                 "nombre": nombre_mapa, "columnas": len(filas[0]), "filas": len(filas), "luz": luz},
+                f"Mapa de zona generado ({tipo}, {len(filas[0])}×{len(filas)} casillas).",
+            ))
+
+    reubicar(datos)
+    mapa = escena.get("mapa")
+    if mapa:
+        posiciones = escena.setdefault("posiciones", [])
+        ocupadas = {p["celda"] for p in posiciones if p.get("celda")}
+        libres = _celdas_transitables(mapa, ocupadas)
+        for pj in datos.get("personajes", []):
+            nombres_pj = {norm(pj.get("nombre", "")), norm(pj.get("id", ""))} - {""}
+            pos = next((x for x in posiciones if norm(x.get("quien", "")) in nombres_pj), None)
+            if pos is None:
+                pos = {"quien": pj["nombre"], "donde": escena.get("lugar") or escena.get("titulo") or "En escena"}
+                posiciones.append(pos)
+            if not pos.get("celda") and libres:
+                celda = libres.pop(0)
+                pos["celda"] = celda
+                hechos.append((
+                    {"tipo": "posicion", "quien": pos["quien"], "donde": pos["donde"], "celda": celda},
+                    f"{pos['quien']}: {pos['donde']} [{celda}]",
+                ))
+    return hechos

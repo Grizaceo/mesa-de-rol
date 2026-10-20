@@ -126,6 +126,7 @@ from .mundo import (
     _por_id,
 )
 from .catalogo import (
+    asegurar_mapa_escena,
     base64,
     cargar_mapa_catalogo,
     distribucion,

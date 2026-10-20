@@ -431,5 +431,33 @@ class TestMundo(unittest.TestCase):
                     self.assertIn("CLI", msg)
 
 
+    def test_turno_con_escena_nueva_conserva_cuadricula_y_actualiza_mundo(self):
+        with repo_temporal():
+            correr("mapa", "cargar", "valle-de-valdris")
+            correr("mundo", "aqui", "Puente de los Votos")
+            correr("mapa", "cargar", "puente-de-los-votos")
+            correr("escena", "posicion", "Jualjin", "en el puente", "--celda", "F4")
+            correr("escena", "posicion", "Crisljin", "en el puente", "--celda", "G4")
+
+            # El narrador cambia de escena en `turno` sin pasar `mapa` ni `escena posicion`:
+            # `turno` carga el mapa del catálogo que coincide con el lugar ("Posada El Grifo Dorado"),
+            # mueve `mundo.aqui` y asigna casilla a los personajes.
+            cod, _, err = correr(
+                "turno",
+                "--accion", "Jualjin=vamos a la posada",
+                "--accion", "Crisljin=lo sigo",
+                "--resumen", "Vuelven a la posada El Grifo Dorado.",
+                "--cambio", 'escena nueva --titulo "Noche en la posada" --lugar "Posada El Grifo Dorado, segundo piso" --hora "Noche" --cierre "Dejaron el puente"',
+            )
+            self.assertEqual(cod, 0, err)
+            datos = estado.cargar("neva")
+            self.assertEqual(datos["mundo"]["actual"], "posada-el-grifo-dorado")
+            self.assertIn("mapa", datos["escena"])
+            self.assertEqual(datos["escena"]["mapa"]["origen"]["id"], "posada-grifo-dorado")
+            celdas = {p["quien"]: p.get("celda") for p in datos["escena"]["posiciones"]}
+            self.assertTrue(celdas.get("Jualjin"))
+            self.assertTrue(celdas.get("Crisljin"))
+
+
 if __name__ == "__main__":
     unittest.main()

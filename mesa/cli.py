@@ -875,11 +875,18 @@ def c_turno(args) -> None:
     acciones = _leer_acciones(args.accion)
     cambios = [_parsear_cambio(c) for c in args.cambio or []]
     datos = estado.cargar(slug)
+    tenia_mapa_o_mundo = bool(
+        (datos.get("escena") or {}).get("mapa")
+        or datos.get("mundo")
+        or any(e.get("tipo") == "mapa" for e in estado.leer_eventos(slug))
+    )
     pausada = datos.pop("pausa", None) is not None
     _lote = {"slug": slug, "datos": datos, "hechos": []}
     try:
         for cambio in cambios:
             cambio.funcion(cambio)
+        if tenia_mapa_o_mundo or bool((datos.get("escena") or {}).get("mapa") or datos.get("mundo")):
+            _lote["hechos"].extend(mapas.asegurar_mapa_escena(datos, slug=slug))
         hechos = _lote["hechos"]
     finally:
         _lote = None

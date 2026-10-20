@@ -92,7 +92,9 @@ def preambulo(slug: str, narrador: str) -> str:
         f"activa: no pases otra), y lee `{carpeta / 'biblia.md'}` y `{carpeta / 'director.md'}` con tu herramienta de "
         "archivos (director.md es secreto: jamás lo cites ni lo resumas en el chat). No busques otros archivos: "
         "`retomar` ya trae la memoria, el estado, los mapas y los últimos eventos.\n"
-        "En cada turno: tira con las herramientas cuando haga falta, registra con `turno` y responde.\n"
+        "En cada turno: tira con las herramientas cuando haga falta, registra con `turno` (incluyendo siempre "
+        "`escena posicion <quien> \"<dónde>\" --celda <C4>` si se mueve, y `mapa cargar`/`mapa generar` + "
+        "`mundo aqui` si cambia de lugar o de escena) y responde.\n"
         "Responde ahora a este mensaje del jugador:\n\n"
     )
 
