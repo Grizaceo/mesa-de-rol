@@ -78,7 +78,11 @@
           </div>
         </div>
         <div class="composer-pie">
-          <span id="estado-narrador" class="texto-3" aria-live="polite"></span>
+          <div class="composer-narrador">
+            <label for="selector-agente" class="oculto-visual">Agente narrador</label>
+            <select id="selector-agente" title="Elegir CLI narrador (ACP)" hidden></select>
+            <span id="estado-narrador" class="texto-3" aria-live="polite"></span>
+          </div>
           <button type="button" id="sesion-nueva" class="enlace" hidden title="El narrador empieza una sesión nueva y retoma desde la memoria de la historia">Sesión nueva del narrador</button>
         </div>
       </form>

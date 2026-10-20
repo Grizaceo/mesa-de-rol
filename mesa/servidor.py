@@ -194,6 +194,11 @@ class Manejador(BaseHTTPRequestHandler):
         if accion == "sesion-nueva":
             narrador.nueva_sesion(slug)
             return {"ok": True}, 200
+        if accion == "agente":
+            if not isinstance(cuerpo.get("agente"), str):
+                raise ValueError("falta «agente»")
+            narrador.cambiar_agente(slug, cuerpo["agente"])
+            return {"ok": True, "narrador": narrador.vista(slug)}, 200
         if accion == "permiso":
             if not isinstance(cuerpo.get("id"), str):
                 raise ValueError("falta «id»")
@@ -316,10 +321,17 @@ def detectar_tailscale(usuarios: list[str] | None = None) -> dict:
     return {"host": host, "usuarios": {u.strip().lower() for u in (usuarios or [dueno])}}
 
 
-def servir(host: str = "127.0.0.1", puerto: int = 8765, agente: str | None = None, comando: list[str] | None = None,
-           tailscale: bool = False, usuarios: list[str] | None = None) -> None:
+def servir(host: str = "127.0.0.1", puerto: int = 8765, agente: str | None = "hermes", comando: list[str] | None = None,
+           tailscale: bool | None = None, usuarios: list[str] | None = None) -> None:
     narrador = chat.Narrador(agente or "agente", comando) if (agente or comando) else None
-    ts = detectar_tailscale(usuarios) if tailscale else None
+    ts = None
+    if tailscale is True:
+        ts = detectar_tailscale(usuarios)
+    elif tailscale is None:
+        try:
+            ts = detectar_tailscale(usuarios)
+        except RuntimeError:
+            ts = None
     servidor = crear(host, puerto, narrador, ts)
     print(f"Visor en http://{host}:{servidor.server_address[1]}  (Ctrl+C para cerrar)", flush=True)
     if narrador:

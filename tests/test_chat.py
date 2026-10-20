@@ -197,6 +197,16 @@ class TestChatPorHTTP(Base):
         self.assertEqual(self.pedir("POST", "/api/memoria?p=neva", {"accion": "agregar", "texto": "x"}, {**base, "Origin": "https://malo.example"})[0], 403)
         self.assertEqual(self.pedir("POST", "/api/memoria?p=neva", {"accion": "agregar", "texto": "y"}, {**base, "Tailscale-User-Login": "otro@ejemplo.com"})[0], 403)
 
+    def test_cambiar_agente_desde_el_visor(self):
+        self.arrancar(self.narrador())
+        visor = self.pedir("GET", "/api/visor")[1]
+        cabeceras = {"Content-Type": "application/json", "X-Mesa-Token": visor["token"]}
+        codigo, r = self.pedir("POST", "/api/chat/agente?p=neva", {"agente": "devin"}, cabeceras)
+        self.assertEqual(codigo, 200, r)
+        self.assertEqual(r["narrador"]["agente"], "devin")
+        self.assertIn("hermes", r["narrador"]["agentes"])
+        self.assertEqual(self.pedir("POST", "/api/chat/agente?p=neva", {"agente": "inexistente"}, cabeceras)[0], 400)
+
 
 if __name__ == "__main__":
     unittest.main()

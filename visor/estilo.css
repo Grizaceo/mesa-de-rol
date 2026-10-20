@@ -230,7 +230,9 @@ body { display: flex; flex-direction: column; height: 100dvh; overflow: hidden; 
 .composer-botones { display: flex; flex-direction: column; gap: 4px; }
 button.principal { background: var(--texto); color: var(--superficie); border-color: var(--texto); font-weight: 600; }
 button.enlace { background: none; border: 0; padding: 0; color: var(--texto-3); text-decoration: underline; font-size: 0.75rem; }
-.composer-pie { display: flex; justify-content: space-between; gap: 8px; max-width: 830px; margin: 4px auto 0; font-size: 0.78rem; min-height: 1.2em; }
+.composer-pie { display: flex; justify-content: space-between; align-items: center; gap: 8px; max-width: 830px; margin: 4px auto 0; font-size: 0.78rem; min-height: 1.4em; }
+.composer-narrador { display: flex; align-items: center; gap: 8px; }
+#selector-agente { font-size: 0.75rem; padding: 1px 6px; height: auto; }
 .composer-aviso { max-width: 830px; margin: 2px auto 6px; font-size: 0.85rem; }
 
 /* dados */

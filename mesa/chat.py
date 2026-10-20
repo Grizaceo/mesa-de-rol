@@ -178,7 +178,8 @@ class Narrador:
         guardada = self._sesion_guardada(slug)
         en_curso = p["en_curso"]
         return {
-            "activo": True, "agente": self.agente, "nombre": p["nombre"] if p["sesion"] else guardada.get("nombre", self.agente),
+            "activo": True, "agente": self.agente, "agentes": list(AGENTES),
+            "nombre": p["nombre"] if p["sesion"] else guardada.get("nombre", self.agente),
             "sesion": bool(p["sesion"] or guardada.get("sesion")),
             "en_curso": None if en_curso is None else {
                 **{k: en_curso[k] for k in ("id", "aviso", "desde", "inicio")}, "partes": [dict(x) for x in en_curso["partes"]],
@@ -223,6 +224,21 @@ class Narrador:
         p["sesion"] = None
         self._guardar_sesion(slug, None, self.agente)
         self._anotar(slug, {"rol": "sistema", "texto": "Sesión nueva del narrador: al próximo mensaje retoma desde la memoria de la historia."})
+
+    def cambiar_agente(self, slug: str, agente: str) -> None:
+        if agente not in AGENTES:
+            raise ValueError(f"agente desconocido: {agente!r} (valen: {', '.join(AGENTES)})")
+        p = self._p(slug)
+        if p["en_curso"] is not None:
+            raise Ocupado("el narrador está respondiendo: detén su turno antes de cambiar de agente")
+        if p["cliente"] is not None:
+            p["cliente"].cerrar()
+            p["cliente"] = None
+        p["sesion"] = None
+        p["nombre"] = agente
+        self.agente = agente
+        self.comando = AGENTES[agente]
+        self._anotar(slug, {"rol": "sistema", "texto": f"Narrador cambiado a `{agente}`: al próximo mensaje retoma la partida."})
 
     def responder_permiso(self, slug: str, ident: str, permitir: bool) -> None:
         permiso = self._p(slug)["permiso"]

@@ -823,14 +823,33 @@ $("#mundo-texto").addEventListener("click", (ev) => {
   pintarMundo();
 });
 
+async function refrescarVisor() {
+  const visor = await api("/api/visor").catch(() => ({ escritura: false, token: null, chat: false }));
+  app.escritura = Boolean(visor.escritura && visor.token);
+  app.token = visor.token;
+  app.chatActivo = Boolean(visor.chat);
+  app.autor = visor.autor;
+}
+
 // Toda escritura del visor: memoria y chat. El servidor exige el token de esta ejecución.
 async function enviarPost(ruta, cuerpo) {
-  const r = await fetch(`${ruta}?p=${encodeURIComponent(app.slug)}`, {
+  let r = await fetch(`${ruta}?p=${encodeURIComponent(app.slug)}`, {
     method: "POST", cache: "no-store",
     headers: { "Content-Type": "application/json", "X-Mesa-Token": app.token || "" },
     body: JSON.stringify(cuerpo),
   });
-  const j = await r.json().catch(() => ({}));
+  let j = await r.json().catch(() => ({}));
+  if (r.status === 403 && String(j.error || "").includes("token")) {
+    await refrescarVisor();
+    if (app.token) {
+      r = await fetch(`${ruta}?p=${encodeURIComponent(app.slug)}`, {
+        method: "POST", cache: "no-store",
+        headers: { "Content-Type": "application/json", "X-Mesa-Token": app.token },
+        body: JSON.stringify(cuerpo),
+      });
+      j = await r.json().catch(() => ({}));
+    }
+  }
   if (!r.ok) throw new Error(j.error || `error ${r.status}`);
   return j;
 }
@@ -1225,8 +1244,20 @@ function pintarComposer() {
   $("#enviar").disabled = ocupado;
   $("#detener").hidden = !ocupado;
   $("#sesion-nueva").hidden = !puede || ocupado || !n.sesion;
+  const selAgente = $("#selector-agente");
+  if (selAgente) {
+    const agentes = Array.isArray(n.agentes) && n.agentes.length ? n.agentes : ["hermes", "devin", "gemini"];
+    const firmaOpciones = agentes.join(",");
+    if (selAgente.dataset.opciones !== firmaOpciones) {
+      selAgente.dataset.opciones = firmaOpciones;
+      selAgente.innerHTML = agentes.map((a) => `<option value="${esc(a)}">CLI: ${esc(a)}</option>`).join("");
+    }
+    if (n.agente && selAgente.value !== n.agente) selAgente.value = n.agente;
+    selAgente.hidden = !puede;
+    selAgente.disabled = ocupado;
+  }
   const aviso = !app.chatActivo
-    ? "Este visor no tiene narrador: se narra desde la terminal y aquí ves la partida en vivo. Para narrar aquí, arráncalo con «bin/mesa servir --agente hermes»."
+    ? "Este visor está en modo solo lectura (arrancado con --sin-agente)."
     : !app.escritura ? "Solo lectura: desde aquí no se puede escribir (en el equipo de la mesa, o por Tailscale con «servir --tailscale»)." : "";
   $("#composer-aviso").hidden = !aviso;
   $("#composer-aviso").textContent = aviso;
@@ -1258,6 +1289,15 @@ $("#detener").addEventListener("click", async () => {
 $("#sesion-nueva").addEventListener("click", async () => {
   if (!confirm("¿Sesión nueva del narrador? Retomará desde la memoria de la historia, sin la conversación anterior.")) return;
   try { await enviarPost("/api/chat/sesion-nueva", {}); await sondear(); } catch (err) { $("#estado-narrador").textContent = `✕ ${err.message}`; }
+});
+$("#selector-agente")?.addEventListener("change", async (ev) => {
+  try {
+    await enviarPost("/api/chat/agente", { agente: ev.target.value });
+    await sondear();
+  } catch (err) {
+    $("#estado-narrador").textContent = `✕ ${err.message}`;
+    await sondear();
+  }
 });
 $("#chat").addEventListener("click", async (ev) => {
   const permiso = ev.target.closest("button[data-permiso]");
@@ -1309,6 +1349,9 @@ async function cargarChat() {
     app.chatSeq = r.mensajes.at(-1).seq;
   }
   app.narrador = r.narrador || { activo: false };
+  if (Boolean(app.narrador.activo) !== app.chatActivo) {
+    await refrescarVisor();
+  }
 }
 
 function conexion(ok) {
@@ -1355,11 +1398,7 @@ async function iniciar() {
   $("#nuevo-categoria").innerHTML = CATEGORIAS.map((c) => `<option${c === "otro" ? " selected" : ""}>${c}</option>`).join("");
   pintarVistas();
   try {
-    const visor = await api("/api/visor").catch(() => ({ escritura: false, token: null, chat: false }));
-    app.escritura = Boolean(visor.escritura && visor.token);
-    app.token = visor.token;
-    app.chatActivo = Boolean(visor.chat);
-    app.autor = visor.autor;
+    await refrescarVisor();
     const { activa, partidas } = await api("/api/partidas");
     const pedida = new URLSearchParams(location.search).get("p");
     app.slug = pedida || activa || partidas[0]?.slug;

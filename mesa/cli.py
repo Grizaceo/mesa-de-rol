@@ -987,8 +987,10 @@ def c_servir(args) -> None:
     from . import servidor
 
     comando = shlex.split(args.agente_cmd) if args.agente_cmd else None
-    servidor.servir(args.host, args.puerto, agente=args.agente or ("agente" if comando else None), comando=comando,
-                    tailscale=args.tailscale, usuarios=args.tailscale_usuario)
+    agente = None if getattr(args, "sin_agente", False) else (args.agente or ("agente" if comando else "hermes"))
+    tailscale = False if getattr(args, "sin_tailscale", False) else (True if args.tailscale else None)
+    servidor.servir(args.host, args.puerto, agente=agente, comando=comando if agente else None,
+                    tailscale=tailscale, usuarios=args.tailscale_usuario)
 
 
 # ---------- parser ----------
@@ -1252,11 +1254,13 @@ def _parser() -> argparse.ArgumentParser:
     e = lsub.add_parser("fase", help="limita la lección a una fase: sesion-cero | siempre"); e.add_argument("id")
     e.add_argument("fase", choices=lecciones.FASES + ("siempre",))
     cmd("retro", c_retro, "estadísticas de la partida y plantilla de retrospectiva")
-    s = cmd("servir", c_servir, "abre el visor local (con --agente, también el chat con el narrador)")
+    s = cmd("servir", c_servir, "abre el visor local con el chat del narrador activo por defecto")
     s.add_argument("--host", default="127.0.0.1"); s.add_argument("--puerto", type=int, default=8765)
-    s.add_argument("--agente", choices=sorted(chat.AGENTES), help="narrador del chat por ACP: hermes (perfil narrador), devin o gemini")
+    s.add_argument("--agente", choices=sorted(chat.AGENTES), default="hermes", help="narrador del chat por ACP: hermes (por defecto), devin o gemini")
+    s.add_argument("--sin-agente", action="store_true", help="abre el visor en modo solo lectura (sin chat de narrador)")
     s.add_argument("--agente-cmd", metavar="'COMANDO ACP'", help="otro agente ACP por stdio, p. ej. 'hermes -p otro acp'")
-    s.add_argument("--tailscale", action="store_true", help="deja escribir por `tailscale serve` al dueño de este nodo")
+    s.add_argument("--tailscale", action="store_true", help="exige habilitar escritura por `tailscale serve` al dueño del nodo")
+    s.add_argument("--sin-tailscale", action="store_true", help="desactiva la escritura por Tailscale aunque el nodo esté conectado")
     s.add_argument("--tailscale-usuario", action="append", metavar="LOGIN", help="con --tailscale: quién puede escribir (repetible)")
     return p
 
