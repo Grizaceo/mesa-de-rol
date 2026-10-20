@@ -14,8 +14,8 @@ from contextlib import nullcontext
 from pathlib import Path
 
 from . import (
-    bloqueo, capacidades, chat, dados, distribucion, estado, fuentes, harness, imagenes, informes, lecciones, mapas,
-    memoria, migraciones, reglas, sesion,
+    bloqueo, capacidades, chat, dados, distribucion, esquemas, estado, fuentes, harness, imagenes, informes, lecciones,
+    mapas, memoria, migraciones, reglas, reglas_2024, sesion,
 )
 from .texto import con_signo, norm
 
@@ -25,6 +25,7 @@ from .texto import con_signo, norm
 ESCRIBEN = frozenset({
     "retomar", "pausar", "tirar", "suerte", "prueba", "ataque", "dano",
     "vida", "condicion", "habilidad", "vendaje", "descanso", "enemigo", "nivel",
+    "iniciativa", "conjuro", "adjudicar",
     "escena", "pnj", "pista", "documento", "trama", "misterio", "recurso", "reloj",
     "turno", "regla", "nota", "imagen", "hecho", "memoria", "mapa", "mundo",
 })
@@ -41,7 +42,8 @@ SOLO_LECTURA = {
 # _cargar y lo cierran con _cerrar, así que dentro de un lote comparten una sola carga y un
 # solo guardado.
 CAMBIOS = (
-    "vida", "condicion", "habilidad", "vendaje", "descanso", "enemigo", "nivel", "escena", "pnj",
+    "vida", "condicion", "habilidad", "vendaje", "descanso", "enemigo", "nivel",
+    "iniciativa", "conjuro", "adjudicar", "escena", "pnj",
     "pista", "documento", "trama", "misterio", "recurso", "reloj", "regla", "hecho", "memoria", "mapa", "mundo",
 )
 
@@ -279,6 +281,7 @@ def c_prueba(args) -> None:
     evento = reglas.prueba(
         datos, ficha, args.atributo, cd=args.cd, ventaja=args.ventaja, desventaja=args.desventaja,
         bonos=args.bono, oficio=args.oficio, usar=args.usar, etiqueta=args.etiqueta or "",
+        salvacion=getattr(args, "salvacion", False),
     )
     _cerrar(args, slug, datos, evento, reglas.describir_prueba(evento))
 
@@ -298,14 +301,20 @@ def c_ataque(args) -> None:
 def c_dano(args) -> None:
     slug, datos = _cargar(args)
     _, ficha = estado.buscar(datos, args.quien)
-    expr = args.expr or reglas.buscar_arma(ficha, args.arma)["dano"]
+    arma_elegida = reglas.buscar_arma(ficha, args.arma) if not args.expr else None
+    expr = args.expr or arma_elegida["dano"]
+    tipo_dano = getattr(args, "tipo_dano", None) or (arma_elegida or {}).get("tipo_dano")
     objetivo = estado.buscar(datos, args.objetivo)[1] if args.objetivo else None
-    r = reglas.dano(datos, expr, objetivo, critico=args.critico)
+    r = reglas.dano(datos, expr, objetivo, critico=args.critico, tipo_dano=tipo_dano)
     evento = {"tipo": "dano", "quien": ficha["nombre"], "etiqueta": args.etiqueta, "arma": args.arma, **r["tirada"], **{k: v for k, v in r.items() if k != "tirada"}}
     valores = " + ".join(str(v) for t in r["tirada"]["dados"] for v in t["valores"])
     texto = f"Daño de {ficha['nombre']}: {expr}{' (crítico)' if args.critico else ''} → {valores} = {r['bruto']}"
     if objetivo is not None:
-        texto += f" − protección {r['proteccion']} = {r['final']} → {objetivo['nombre']} {r['vida']['despues']}/{r['vida']['maximo']}"
+        if esquemas.version_de(datos) == esquemas.VERSION_2024:
+            ajuste = f" [{r['ajuste_resistencia']}]" if r.get("ajuste_resistencia") else ""
+            texto += f"{ajuste} → {r['final']} → {objetivo['nombre']} {r['vida']['despues']}/{r['vida']['maximo']}"
+        else:
+            texto += f" − protección {r['proteccion']} = {r['final']} → {objetivo['nombre']} {r['vida']['despues']}/{r['vida']['maximo']}"
     _cerrar(args, slug, datos, evento, texto)
 
 
@@ -324,7 +333,12 @@ def c_suerte(args) -> None:
 def c_vida(args) -> None:
     slug, datos = _cargar(args)
     _, ficha = estado.buscar(datos, args.quien)
-    cambio = reglas.aplicar_vida(ficha, args.delta)
+    if getattr(args, "temporal", False):
+        cambio = reglas_2024.fijar_vida_temporal(ficha, args.delta)
+        evento = {"tipo": "vida_temporal", "quien": ficha["nombre"], "cantidad": args.delta, "motivo": args.motivo, **cambio}
+        _cerrar(args, slug, datos, evento, f"{ficha['nombre']}: PG temporales {cambio['antes']} → {cambio['despues']}")
+        return
+    cambio = reglas.aplicar_vida(ficha, args.delta, partida=datos)
     evento = {"tipo": "vida", "quien": ficha["nombre"], "delta": args.delta, "motivo": args.motivo, **cambio}
     _cerrar(args, slug, datos, evento, f"{ficha['nombre']}: vida {cambio['antes']} → {cambio['despues']}/{cambio['maximo']}")
 
@@ -380,6 +394,11 @@ def c_vendaje(args) -> None:
 def c_descanso(args) -> None:
     slug, datos = _cargar(args)
     quienes = [estado.buscar(datos, q)[1] for q in args.quien] if args.quien else datos.get("personajes", [])
+    if esquemas.version_de(datos) == esquemas.VERSION_2024:
+        lineas = reglas_2024.descanso(datos, args.clase, quienes=quienes, dados_golpe=getattr(args, "dados_golpe", 0) or 0)
+        texto = f"Descanso {args.clase}.\n" + "\n".join(f"  {l}" for l in lineas)
+        _cerrar(args, slug, datos, {"tipo": "descanso", "clase": args.clase, "quien": [p["nombre"] for p in quienes], "cambios": lineas}, texto)
+        return
     recargas = {"descanso"} if args.clase == "corto" else {"descanso", "escena", "combate", "dia"}
     lineas = []
     for p in quienes:
@@ -456,6 +475,45 @@ def c_nivel(args) -> None:
         mejora = f"nueva habilidad «{nombre.strip()}»"
     texto = f"{ficha['nombre']} sube a nivel {ficha['nivel']}: vida {ficha['vida']}/{ficha['vida_max']}, {mejora}"
     _cerrar(args, slug, datos, {"tipo": "nivel", "quien": ficha["nombre"], "nivel": ficha["nivel"], "mejora": mejora}, texto)
+
+
+def c_iniciativa(args) -> None:
+    slug, datos = _cargar(args)
+    orden = reglas_2024.tirar_iniciativa(datos)
+    lineas = ["Orden de iniciativa:"] + [
+        f"  {i}. {x['quien']}: {x['total']} (d20={x['elegido']}, mod {con_signo(x['modificador'])}, {x['modo']})"
+        for i, x in enumerate(orden, start=1)
+    ]
+    _cerrar(args, slug, datos, {"tipo": "iniciativa", "orden": orden}, "\n".join(lineas))
+
+
+def c_conjuro(args) -> None:
+    slug, datos = _cargar(args)
+    _, lanzador = estado.buscar(datos, args.quien)
+    objetivos = [estado.buscar(datos, q)[1] for q in (args.objetivo or [])]
+    ev = reglas_2024.lanzar_conjuro(datos, lanzador, args.conjuro, nivel_slot=args.nivel_slot, objetivos=objetivos)
+    if ev.get("requiere_resolucion_manual"):
+        texto = (
+            f"{ev['quien']} lanza «{ev['conjuro']}» (espacio niv. {ev.get('nivel_slot', '?')}, CD {ev.get('cd', '?')}): "
+            f"requiere resolución manual — {ev['referencia']}"
+        )
+    else:
+        partes_obj = [
+            f"{r['objetivo']}: salvación {r['salvacion']['total']} ({'éxito' if r['salvacion']['exito'] else 'fallo'}) → "
+            f"{r['dano_final']} de daño ({r['vida']['despues']}/{r['vida']['maximo']})"
+            for r in ev.get("resultados_objetivos", [])
+        ]
+        texto = f"{ev['quien']} lanza «{ev['conjuro']}» (CD {ev['cd']}): " + ("; ".join(partes_obj) or "resuelto")
+    _cerrar(args, slug, datos, ev, texto)
+
+
+def c_adjudicar(args) -> None:
+    slug, datos = _cargar(args)
+    ev = reglas_2024.adjudicar(
+        datos, regla=args.regla, decision=args.decision, autor=args.autor, motivo=args.motivo or "",
+    )
+    texto = f"Adjudicación manual ({ev['autor']}) · {ev['regla']}: {ev['decision']}"
+    _cerrar(args, slug, datos, ev, texto)
 
 
 # ---------- mundo ----------
@@ -1002,10 +1060,11 @@ def _parser() -> argparse.ArgumentParser:
 
     s = cmd("tirar", c_tirar, "tira una expresión: 1d20+3, 2d6, d100, 1d8+1d4")
     s.add_argument("expr"); s.add_argument("--quien"); s.add_argument("--etiqueta"); s.add_argument("--critico", action="store_true")
-    s = cmd("prueba", c_prueba, "prueba d20 de atributo o habilidad contra una dificultad")
-    s.add_argument("quien"); s.add_argument("atributo", help="fuerza, agilidad, ingenio, corazón o una habilidad (sigilo, percepción...)")
+    s = cmd("prueba", c_prueba, "prueba d20 de atributo o habilidad (o salvación) contra una dificultad")
+    s.add_argument("quien"); s.add_argument("atributo", help="característica o habilidad (sigilo, percepción...)")
     s.add_argument("--cd", "--dc", help="número o: muy-facil (5), sencilla (10), exigente (15), dificil (20), muy-dificil (25), casi-imposible (30)")
     s.add_argument("--usar", metavar="HABILIDAD", help="gasta una habilidad de la ficha y suma su bono")
+    s.add_argument("--salvacion", action="store_true", help="en D&D 2024: tirada de salvación de característica")
     opciones_d20(s)
     s = cmd("ataque", c_ataque, "ataque contra la Defensa de un objetivo; si acierta, aplica el daño")
     s.add_argument("quien"); s.add_argument("objetivo"); s.add_argument("--arma"); s.add_argument("--atributo")
@@ -1013,11 +1072,13 @@ def _parser() -> argparse.ArgumentParser:
     opciones_d20(s)
     s = cmd("dano", c_dano, "tira daño de un arma o expresión y lo aplica al objetivo")
     s.add_argument("quien"); s.add_argument("--arma"); s.add_argument("--expr"); s.add_argument("--objetivo")
+    s.add_argument("--tipo-dano", help="en D&D 2024: cortante, perforante, contundente, fuego, veneno...")
     s.add_argument("--critico", action="store_true"); s.add_argument("--etiqueta")
     s = cmd("suerte", c_suerte, "d100 contra un porcentaje, para lo que no depende de nadie")
     s.add_argument("probabilidad", type=int); s.add_argument("--etiqueta", required=True)
 
     s = cmd("vida", c_vida, "suma o resta vida: mesa vida Jualjin -3"); s.add_argument("quien"); s.add_argument("delta", type=int); s.add_argument("--motivo")
+    s.add_argument("--temporal", action="store_true", help="en D&D 2024: fija PG temporales (no se acumulan)")
     s = cmd("condicion", c_condicion, "agrega o quita una condición (catálogo: guias/condiciones.md)")
     s.add_argument("quien"); s.add_argument("accion", choices=["agregar", "quitar"]); s.add_argument("nombre")
     s.add_argument("--efecto"); s.add_argument("--desventaja", help="atributos afectados, separados por coma, o 'todo'/'ataques'")
@@ -1026,6 +1087,7 @@ def _parser() -> argparse.ArgumentParser:
     s.add_argument("quien")
     s = cmd("descanso", c_descanso, "descanso corto (recarga lo «por descanso») o largo (toda la vida, −1 agotamiento, recarga todo)")
     s.add_argument("clase", choices=["corto", "largo"]); s.add_argument("--quien", action="append", help="solo estos personajes (por defecto, todos)")
+    s.add_argument("--dados-golpe", type=int, default=0, help="en D&D 2024: Dados de Golpe a gastar en un descanso corto")
     s = cmd("habilidad", c_habilidad, "marca una habilidad como gastada o recargada")
     s.add_argument("quien"); s.add_argument("nombre"); g = s.add_mutually_exclusive_group(required=True)
     g.add_argument("--usar", action="store_true"); g.add_argument("--recargar", action="store_true")
@@ -1036,6 +1098,14 @@ def _parser() -> argparse.ArgumentParser:
     s = cmd("nivel", c_nivel, "sube de nivel tras un hito: +2 vida máx. y +1 atributo o una habilidad nueva")
     s.add_argument("quien"); g = s.add_mutually_exclusive_group(required=True)
     g.add_argument("--atributo"); g.add_argument("--habilidad", help="'Nombre: qué hace'")
+    cmd("iniciativa", c_iniciativa, "tira iniciativa D&D 2024 (1d20 + mod Destreza) para los combatientes en escena")
+    s = cmd("conjuro", c_conjuro, "lanza un conjuro D&D 2024 (o devuelve requiere_resolucion_manual con referencia SRD)")
+    s.add_argument("quien"); s.add_argument("conjuro")
+    s.add_argument("--nivel-slot", type=int, help="nivel del espacio de conjuro a gastar")
+    s.add_argument("--objetivo", action="append", help="objetivo del conjuro (repetible)")
+    s = cmd("adjudicar", c_adjudicar, "registra una adjudicación manual de la mesa con referencia SRD y autor")
+    s.add_argument("regla"); s.add_argument("decision")
+    s.add_argument("--autor", default="director+jugador"); s.add_argument("--motivo", default="")
 
     s = cmd("escena", c_escena, "nueva escena, editarla o fijar posiciones")
     s.add_argument("accion", choices=["nueva", "editar", "posicion"])

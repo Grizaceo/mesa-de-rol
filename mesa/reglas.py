@@ -6,7 +6,7 @@ desviaciones están documentadas en reglas/d20-simple.md y guias/fuente-srd.md.
 
 from __future__ import annotations
 
-from . import dados, esquemas
+from . import dados, esquemas, reglas_2024
 from .texto import con_signo, norm
 
 ATRIBUTOS = tuple(esquemas.NOMBRES_LEGACY)
@@ -130,8 +130,10 @@ def resolver_cd(cd: str | int | None) -> int | None:
     raise ValueError(f"dificultad desconocida: {cd!r} (usa un número o: {', '.join(sorted(set(DIFICULTADES)))})")
 
 
-def condicion_de_catalogo(nombre: str) -> dict | None:
-    base = CONDICIONES.get(norm(nombre))
+def condicion_de_catalogo(nombre: str, partida: dict | None = None) -> dict | None:
+    if partida is not None and esquemas.version_de(partida) == esquemas.VERSION_2024:
+        return reglas_2024.condicion_de_catalogo(nombre)
+    base = CONDICIONES.get(norm(nombre)) or reglas_2024.condicion_de_catalogo(nombre)
     return dict(base) if base else None
 
 
@@ -195,8 +197,15 @@ def prueba(
     oficio: bool = False,
     usar: str | None = None,
     etiqueta: str = "",
+    salvacion: bool = False,
 ) -> dict:
-    """Prueba de atributo o habilidad. Muta la ficha si se gasta una habilidad."""
+    """Prueba de atributo o habilidad (o salvación en D&D 2024). Muta la ficha si se gasta una habilidad."""
+    if esquemas.version_de(partida) == esquemas.VERSION_2024:
+        return reglas_2024.prueba(
+            partida, ficha, atributo, cd=resolver_cd(cd), ventaja=ventaja, desventaja=desventaja,
+            bonos=bonos, oficio=oficio, usar=usar, etiqueta=etiqueta, salvacion=salvacion,
+            buscar_habilidad_fn=buscar_habilidad,
+        )
     exigir_legacy(partida)
     reglas = partida.get("reglas", {})
     attr, habilidad = resolver_atributo(atributo)
@@ -235,8 +244,12 @@ def prueba(
     }
 
 
-def aplicar_vida(ficha: dict, delta: int) -> dict:
-    """Suma o resta vida dentro de [0, máximo] y gestiona 'Fuera de combate'."""
+def aplicar_vida(ficha: dict, delta: int, partida: dict | None = None) -> dict:
+    """Suma o resta vida dentro de [0, máximo] y gestiona 'Fuera de combate' (o 0 PG en 2024)."""
+    if partida is not None and esquemas.version_de(partida) == esquemas.VERSION_2024:
+        return reglas_2024.aplicar_vida(ficha, delta, partida=partida)
+    if "vida_temporal" in ficha and int(ficha.get("vida_temporal", 0)) > 0:
+        return reglas_2024.aplicar_vida(ficha, delta, partida=partida)
     maximo = int(ficha.get("vida_max", ficha.get("vida", 0)))
     antes = int(ficha.get("vida", 0))
     ficha["vida"] = max(0, min(maximo, antes + delta))
@@ -253,8 +266,11 @@ def dano(
     expr: str,
     objetivo: dict | None = None,
     critico: bool = False,
+    tipo_dano: str | None = None,
 ) -> dict:
-    """Tira daño; si hay objetivo, resta su protección (mínimo 1 si así lo dice la partida) y aplica."""
+    """Tira daño; en legacy resta protección plana y en 2024 aplica resistencias/inmunidades/vulnerabilidades."""
+    if esquemas.version_de(partida) == esquemas.VERSION_2024:
+        return reglas_2024.dano(partida, expr, objetivo, critico=critico, tipo_dano=tipo_dano)
     reglas = partida.get("reglas", {})
     tirada = dados.tirar(expr, critico=critico and reglas.get("critico_dobla_dados", True))
     resultado = {"tirada": tirada, "bruto": tirada["total"]}
@@ -281,7 +297,13 @@ def ataque(
     atributo: str | None = None,
     etiqueta: str = "",
 ) -> dict:
-    """Tirada de ataque contra la Defensa del objetivo y, si acierta, daño aplicado."""
+    """Tirada de ataque contra la Defensa/CA del objetivo y, si acierta, daño aplicado."""
+    if esquemas.version_de(partida) == esquemas.VERSION_2024:
+        return reglas_2024.ataque(
+            partida, atacante, objetivo, arma=arma, ventaja=ventaja, desventaja=desventaja,
+            bonos=bonos, oficio=oficio, cobertura=cobertura, atributo=atributo, etiqueta=etiqueta,
+            buscar_arma_fn=buscar_arma,
+        )
     exigir_legacy(partida)
     reglas = partida.get("reglas", {})
     if int(atacante.get("vida", 1)) <= 0:
@@ -336,7 +358,8 @@ def ataque(
 def describir_prueba(e: dict) -> str:
     """Línea legible para el chat: lo que el director pega en RESULTADO."""
     quien = e.get("quien", "")
-    que = e.get("habilidad") or NOMBRE_ATRIBUTO.get(e.get("atributo") or "", "")
+    attr_nombre = esquemas.nombre_atributo(e.get("atributo") or "")
+    que = e.get("habilidad") or (f"Salvación de {attr_nombre}" if e.get("salvacion") else attr_nombre)
     if e["tipo"] == "ataque":
         que = f"ataca a {e['objetivo']}" if e["arma"] == "Ataque" else f"ataque con {e['arma']} a {e['objetivo']}"
     cabeza = " · ".join(x for x in (quien, que, e.get("etiqueta")) if x)
@@ -351,6 +374,7 @@ def describir_prueba(e: dict) -> str:
     etiquetas = {
         "critico": "¡CRÍTICO! (20 natural)",
         "uno_natural": "fallo (1 natural)",
+        "fallo_automatico": "fallo automático (condición)",
         "exito": "éxito",
         "fallo": "fallo",
         "sin_cd": "",
@@ -367,9 +391,22 @@ def describir_prueba(e: dict) -> str:
     if e.get("dano"):
         d = e["dano"]
         valores = " + ".join(str(v) for t in d["tirada"]["dados"] for v in t["valores"])
-        salida += (
-            f"\n  daño {d['tirada']['expr']}{' (crítico: dados dobles)' if d['tirada']['critico'] else ''}: "
-            f"{valores} = {d['bruto']} − protección {d['proteccion']} = {d['final']}"
-            f" → {d['objetivo']} {d['vida']['despues']}/{d['vida']['maximo']}"
-        )
+        if d.get("bonus_mod"):
+            valores += f" {con_signo(d['bonus_mod'])} ({d.get('fuente_mod') or 'mod'})"
+        if e.get("reglamento") == esquemas.REGLAMENTO_2024:
+            ajuste = f" [{d['ajuste_resistencia']}]" if d.get("ajuste_resistencia") else ""
+            salida += (
+                f"\n  daño {d['tirada']['expr']}{' (crítico: dados dobles)' if d['tirada']['critico'] else ''}: "
+                f"{valores} = {d['bruto']}{ajuste} → {d['final']}"
+                f" → {d['objetivo']} {d['vida']['despues']}/{d['vida']['maximo']}"
+            )
+        else:
+            salida += (
+                f"\n  daño {d['tirada']['expr']}{' (crítico: dados dobles)' if d['tirada']['critico'] else ''}: "
+                f"{valores} = {d['bruto']} − protección {d['proteccion']} = {d['final']}"
+                f" → {d['objetivo']} {d['vida']['despues']}/{d['vida']['maximo']}"
+            )
+    elif e.get("dano_maestria"):
+        dm = e["dano_maestria"]
+        salida += f"\n  maestría Rozar: {dm['final']} de daño → {dm['objetivo']} {dm['vida']['despues']}/{dm['vida']['maximo']}"
     return salida

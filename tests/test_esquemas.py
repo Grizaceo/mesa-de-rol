@@ -177,10 +177,9 @@ class TestNuevaPartida(unittest.TestCase):
         with repo_temporal():
             correr("nueva", "mesa-2024", "--titulo", "Mesa nueva")
             antes = estado.cargar("mesa-2024")["version"]
-            codigo, _, errores = correr("prueba", "Personaje 1", "fuerza")
+            codigo, _, errores = correr("prueba", "Personaje 1", "ingenio")
             self.assertEqual(codigo, 1)
-            self.assertIn("dnd-2024", errores)
-            self.assertIn("motor", errores)
+            self.assertIn("2024", errores)
             codigo, _, errores = correr("nivel", "Personaje 1", "--atributo", "fuerza")
             self.assertEqual(codigo, 1)
             self.assertIn("motor", errores)
@@ -199,15 +198,15 @@ class TestNuevaPartida(unittest.TestCase):
 
 
 class TestMotorSoloLegacy(unittest.TestCase):
-    def test_prueba_y_ataque_se_niegan_con_partida_2024(self):
+    def test_exigir_legacy_y_atributos_legacy_se_niegan_con_partida_2024(self):
         datos = partida_2024()
         ficha = datos["personajes"][0]
-        for intento in (lambda: reglas.prueba(datos, ficha, "fuerza"),
-                        lambda: reglas.ataque(datos, ficha, dict(ficha, nombre="Otro"))):
+        for intento in (lambda: reglas.exigir_legacy(datos),
+                        lambda: reglas.prueba(datos, ficha, "ingenio")):
             with self.subTest(intento=intento):
                 with self.assertRaises(ValueError) as e:
                     intento()
-                self.assertIn("dnd-2024", str(e.exception))
+                self.assertIn("2024", str(e.exception))
 
 
 if __name__ == "__main__":

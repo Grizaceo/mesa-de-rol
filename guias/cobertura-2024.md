@@ -13,15 +13,16 @@ resuelve para D&D 2024, lo que la mesa decide a mano y lo que no está soportado
 | Catálogo externo | Conjuros y reglas del documento `srd-2024` vía Open5e, con caché, licencia, URL y fecha por entrada; verificación de fuente en cada respuesta y al leer; sin red se sirve la caché o se avisa | `mesa/fuentes.py` | `tests/test_fuentes.py` |
 | Fixture autorizada | Un conjuro (Fireball) y una condición (Prone) con procedencia, cotejados contra el PDF oficial | `tests/fixtures/2024/` | `tests/test_fuentes.py` |
 | Migración no destructiva | Diagnóstico `dry-run` (enumera características faltantes y decisiones humanas sin heurísticas) y migración en copia validada (`migrar copiar`) que conserva intactos el original y los eventos históricos | `mesa/migraciones.py`, `mesa/cli.py` | `tests/test_migraciones.py` |
+| Motor de reglas 2024 (corte vertical P2) | Seis características, modificadores, competencia (+2..+6) y pericia (×2); separación entre prueba de habilidad y tirada de salvación (`--salvacion`); ataque contra CA + cobertura, daño con modificador, críticos, resistencias (÷2 hacia abajo), inmunidades (0) y vulnerabilidades (×2); propiedades (`sutil`, etc.) y maestría `rozar`/`graze`; PG temporales (`vida --temporal`), 0 PG, muerte instantánea, salvaciones de muerte, Agotamiento 2024 (−2 × nivel y −1,5 m × nivel), Iniciativa (`iniciativa` con desventaja por Sorprendido), descansos corto (`--dados-golpe`) y largo, lanzamiento de conjuros (`conjuro`) con gasto de espacios y concentración, consumibles y degradación honesta (`requiere_resolucion_manual` + `adjudicar`) | `mesa/reglas_2024.py`, `mesa/reglas.py`, `mesa/cli.py` | `tests/test_reglas_2024.py` |
 
 ## Manual (la mesa decide; el motor no lo automatiza)
 
 | Área | Cómo se resuelve hoy |
 |---|---|
-| Motor de reglas 2024 | Pendiente (corte vertical, P2): `prueba`, `ataque` y `nivel` se niegan a calcular sobre una partida 2024 en vez de hacerlo mal |
-| Conjuros y condiciones en juego | El director aplica a mano el texto de la caché o la fixture hasta que exista el motor |
-| Ficha (clase, especie, trasfondo, dotes, equipo) | Por acordar con los jugadores (entrada de P2/P4) |
-| Visor | Tarjetas 2024 (seis características con modificador, CA, HP temporal, condiciones) pendientes (P3.1) |
+| Conjuros y rasgos sin automatización numérica | El motor devuelve `requiere_resolucion_manual` con la referencia del SRD y la mesa registra la decisión con `mesa adjudicar "<regla>" "<decisión>"` |
+| Subida de nivel D&D 2024 (elección de subclase, dotes, PG por clase) | La mesa actualiza la ficha al subir de nivel según la clase del SRD 5.2.1 (`nivel` automático sigue siendo exclusivo de `d20-simple`) |
+| Ficha de campaña real (clase, especie, trasfondo, dotes, equipo) | Por acordar con los jugadores (entrada de P4) |
+| Visor | Tarjetas específicas 2024 (CA, PG temporales, espacios de conjuro) pendientes (P3.1) |
 
 ## No soportado
 

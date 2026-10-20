@@ -1,0 +1,232 @@
+{
+  "slug": "ensayo-2024",
+  "titulo": "Ensayo D&D 2024",
+  "schema_version": 2,
+  "reglamento": "dnd-2024",
+  "idioma": "es",
+  "version": 1,
+  "ambientacion": {
+    "epoca": "Fantasía clásica",
+    "lugar": "Cripta del Pacto",
+    "etiquetas": ["dnd-2024", "srd-5.2.1"],
+    "tono": ["aventura"],
+    "estilo_visual": "Ilustración fantástica clásica"
+  },
+  "tema": { "acento": "#8a6d3b" },
+  "reglas": {
+    "unidades": "metros",
+    "muerte": "Salvaciones de muerte del SRD 5.2.1."
+  },
+  "reglas_casa": [],
+  "reloj": { "dia": 1, "plazos": [] },
+  "escenas_jugadas": 1,
+  "escena": {
+    "numero": 1,
+    "titulo": "Entrada de la cripta",
+    "lugar": "Antecámara de piedra",
+    "hora": "Mediodía",
+    "descripcion": "Dos aventureros frente a un esqueleto guardián.",
+    "posiciones": [
+      { "quien": "Valeria", "donde": "Frente al altar, a 1,5 m del esqueleto" },
+      { "quien": "Alden", "donde": "En la escalinata, a 9 m del altar" }
+    ],
+    "imagen": null
+  },
+  "personajes": [
+    {
+      "id": "valeria",
+      "nombre": "Valeria",
+      "rol": "Guerrera de primera línea",
+      "clase": "Guerrero",
+      "especie": "Humana",
+      "trasfondo": "Soldado",
+      "nivel": 5,
+      "vida": 44,
+      "vida_max": 44,
+      "vida_temporal": 0,
+      "defensa": 18,
+      "proteccion": 0,
+      "velocidad": 9.0,
+      "color": "#c0392b",
+      "atributos": {
+        "fuerza": 18,
+        "destreza": 14,
+        "constitucion": 16,
+        "inteligencia": 10,
+        "sabiduria": 12,
+        "carisma": 8
+      },
+      "competencias": {
+        "habilidades": ["Atletismo", "Percepción", "Intimidación"],
+        "pericia": [],
+        "salvaciones": ["fuerza", "constitucion"],
+        "armas": ["simples", "marciales"]
+      },
+      "dados_golpe": { "dado": "d10", "actual": 5, "max": 5 },
+      "rasgos": [
+        { "nombre": "Estilo de combate: Defensa", "texto": "+1 a la CA con armadura (incluido en defensa 18)." }
+      ],
+      "habilidades": [
+        {
+          "nombre": "Tomar aliento",
+          "texto": "Recupera 1d10+5 PG como acción adicional.",
+          "recarga": "descanso_corto",
+          "disponible": true
+        },
+        {
+          "nombre": " Acción súbita",
+          "texto": "Una acción extra en el turno.",
+          "recarga": "descanso_corto",
+          "disponible": true
+        },
+        {
+          "nombre": "Indomable",
+          "texto": "Repite una salvación fallida con +5.",
+          "recarga": "descanso_largo",
+          "disponible": true
+        }
+      ],
+      "equipo": [
+        {
+          "nombre": "Espada larga",
+          "dano": "1d8",
+          "tipo_dano": "cortante",
+          "propiedades": ["versatil"],
+          "maestria": "agotar",
+          "competente": true
+        },
+        {
+          "nombre": "Espadón",
+          "dano": "2d6",
+          "tipo_dano": "cortante",
+          "propiedades": ["dos-manos", "pesada"],
+          "maestria": "rozar",
+          "competente": true
+        },
+        {
+          "nombre": "Daga",
+          "dano": "1d4",
+          "tipo_dano": "perforante",
+          "propiedades": ["sutil", "ligera", "arrojadiza"],
+          "maestria": "mellar",
+          "competente": true
+        },
+        {
+          "nombre": "Poción de curación",
+          "cantidad": 2,
+          "consumible": true,
+          "efecto": "2d4+2 PG"
+        }
+      ],
+      "condiciones": []
+    },
+    {
+      "id": "alden",
+      "nombre": "Alden",
+      "rol": "Mago erudito",
+      "clase": "Mago",
+      "especie": "Elfo",
+      "trasfondo": "Sabio",
+      "nivel": 5,
+      "vida": 32,
+      "vida_max": 32,
+      "vida_temporal": 0,
+      "defensa": 15,
+      "proteccion": 0,
+      "velocidad": 9.0,
+      "atributo_conjuro": "inteligencia",
+      "color": "#2980b9",
+      "atributos": {
+        "fuerza": 8,
+        "destreza": 14,
+        "constitucion": 14,
+        "inteligencia": 18,
+        "sabiduria": 12,
+        "carisma": 10
+      },
+      "competencias": {
+        "habilidades": ["Arcanos", "Historia", "Investigación", "Sigilo"],
+        "pericia": ["Arcanos"],
+        "salvaciones": ["inteligencia", "sabiduria"],
+        "armas": ["simples"]
+      },
+      "dados_golpe": { "dado": "d6", "actual": 5, "max": 5 },
+      "espacios_conjuro": {
+        "1": { "actual": 4, "max": 4 },
+        "2": { "actual": 3, "max": 3 },
+        "3": { "actual": 2, "max": 2 }
+      },
+      "conjuros": [
+        {
+          "key": "srd-2024_fireball",
+          "nombre": "Fireball",
+          "nivel": 3,
+          "salvacion": "destreza",
+          "dano": "8d6",
+          "tipo_dano": "fuego",
+          "mitad_en_exito": true,
+          "concentracion": false
+        },
+        {
+          "key": "srd-2024_web",
+          "nombre": "Telaraña",
+          "nivel": 2,
+          "salvacion": "destreza",
+          "concentracion": true,
+          "automatizado": false,
+          "referencia": "SRD 5.2.1 › Spells › Web"
+        }
+      ],
+      "rasgos": [],
+      "habilidades": [
+        {
+          "nombre": "Recuperación arcana",
+          "texto": "Recupera espacios de conjuro en descanso corto (1/día).",
+          "recarga": "descanso_largo",
+          "disponible": true
+        }
+      ],
+      "equipo": [
+        {
+          "nombre": "Bastón",
+          "dano": "1d6",
+          "tipo_dano": "contundente",
+          "propiedades": ["versatil"],
+          "competente": true
+        }
+      ],
+      "condiciones": []
+    }
+  ],
+  "enemigos": [
+    {
+      "id": "esqueleto",
+      "nombre": "Esqueleto guardián",
+      "nivel": 1,
+      "vida": 26,
+      "vida_max": 26,
+      "defensa": 13,
+      "proteccion": 2,
+      "ataque": 4,
+      "dano": "1d6+2",
+      "tipo_dano": "perforante",
+      "atributos": {
+        "fuerza": 10,
+        "destreza": 14,
+        "constitucion": 15,
+        "inteligencia": 6,
+        "sabiduria": 8,
+        "carisma": 5
+      },
+      "vulnerabilidades": ["contundente"],
+      "resistencias": ["perforante"],
+      "inmunidades": ["veneno"],
+      "condiciones": []
+    }
+  ],
+  "recursos": {},
+  "pnj": [],
+  "pistas": [],
+  "tramas": [],
+  "misterios": []
+}

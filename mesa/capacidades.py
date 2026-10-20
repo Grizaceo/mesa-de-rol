@@ -23,6 +23,7 @@ DE_JUEGO = frozenset({
     "partidas", "usar", "nueva", "estado", "revisar", "retomar", "pausar", "contexto",
     "tirar", "prueba", "ataque", "dano", "suerte",
     "vida", "condicion", "habilidad", "vendaje", "descanso", "enemigo", "nivel",
+    "iniciativa", "conjuro", "adjudicar",
     "escena", "pnj", "pista", "documento", "trama", "misterio", "recurso", "reloj",
     "turno", "regla", "nota", "imagen", "guardar", "retro", "leccion",
     "hecho", "memoria", "mapa", "mundo",
