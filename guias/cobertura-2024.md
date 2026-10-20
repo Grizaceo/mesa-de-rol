@@ -12,6 +12,7 @@ resuelve para D&D 2024, lo que la mesa decide a mano y lo que no está soportado
 | Partida nueva | La plantilla y `nueva` crean partidas 2024; la histórica (`d20-simple`, esquema 1) se abre sin alterarse | `partidas/_plantilla/`, `mesa/estado.py` | `tests/test_esquemas.py` |
 | Catálogo externo | Conjuros y reglas del documento `srd-2024` vía Open5e, con caché, licencia, URL y fecha por entrada; verificación de fuente en cada respuesta y al leer; sin red se sirve la caché o se avisa | `mesa/fuentes.py` | `tests/test_fuentes.py` |
 | Fixture autorizada | Un conjuro (Fireball) y una condición (Prone) con procedencia, cotejados contra el PDF oficial | `tests/fixtures/2024/` | `tests/test_fuentes.py` |
+| Migración no destructiva | Diagnóstico `dry-run` (enumera características faltantes y decisiones humanas sin heurísticas) y migración en copia validada (`migrar copiar`) que conserva intactos el original y los eventos históricos | `mesa/migraciones.py`, `mesa/cli.py` | `tests/test_migraciones.py` |
 
 ## Manual (la mesa decide; el motor no lo automatiza)
 

@@ -15,7 +15,7 @@ from pathlib import Path
 
 from . import (
     bloqueo, capacidades, chat, dados, distribucion, estado, fuentes, harness, imagenes, informes, lecciones, mapas,
-    memoria, reglas, sesion,
+    memoria, migraciones, reglas, sesion,
 )
 from .texto import con_signo, norm
 
@@ -237,6 +237,28 @@ def c_fuentes(args) -> None:
 
 def c_contexto(args) -> None:
     print(informes.contexto(estado.slug_activo(args.partida), args.completo, args.eventos))
+
+
+def c_migrar(args) -> None:
+    """Diagnóstico dry-run (P1.4) o migración no destructiva en copia (P1.5) a D&D 2024."""
+    slug, datos = _cargar(args)
+    fichas = migraciones.cargar_fichas_2024(args.fichas, args.atributos)
+    accion = "diagnosticar" if args.dry_run else (args.accion or "diagnosticar")
+    if accion == "diagnosticar":
+        informe = migraciones.diagnosticar(datos, slug, fichas_2024=fichas or None)
+        _imprimir(args, informe, migraciones.formatear_diagnostico(informe))
+        return
+    destino = args.destino or args.hacia
+    if not destino:
+        raise ValueError("indica el slug de la copia de destino: `mesa migrar copiar <slug-destino> --fichas ...`")
+    raiz_destino = Path(args.raiz_destino).expanduser() if args.raiz_destino else None
+    res = migraciones.migrar_copia(slug, destino, fichas, raiz_destino=raiz_destino)
+    texto = (
+        f"Copia migrada a D&D 2024: {res['destino']} → {res['ruta']}\n"
+        f"Resumen y rollback: {res['resumen_archivo']}\n"
+        f"(La partida original «{slug}» sigue intacta.)"
+    )
+    _imprimir(args, res, texto)
 
 
 # ---------- dados ----------
@@ -961,6 +983,15 @@ def _parser() -> argparse.ArgumentParser:
     s = cmd("contexto", c_contexto, "contexto del director: lecciones, reglas de la casa, estado y últimos eventos")
     s.add_argument("--completo", action="store_true", help="incluye biblia, notas del director y reglamento")
     s.add_argument("--eventos", type=int, default=15)
+    s = cmd("migrar", c_migrar, "diagnóstico dry-run o migración en copia validada de d20-simple a dnd-2024")
+    s.add_argument("accion", nargs="?", choices=["diagnosticar", "copiar"], default="diagnosticar")
+    s.add_argument("destino", nargs="?", help="con `copiar`: slug de la copia nueva (p. ej. neva-2024)")
+    s.add_argument("--hacia", help="alternativa a <destino> para el slug de la copia")
+    s.add_argument("--dry-run", action="store_true", help="solo diagnostica campos faltantes y acciones humanas sin escribir")
+    s.add_argument("--fichas", help="archivo JSON (o JSON inline) con las fichas 2024 acordadas por personaje")
+    s.add_argument("--atributos", action="append", metavar="QUIEN=fue:N,des:N,...",
+                   help="6 puntuaciones 2024 acordadas para un personaje (repetible)")
+    s.add_argument("--raiz-destino", help="raíz alternativa (scratch) donde crear partidas/<destino>")
 
     def opciones_d20(s):
         s.add_argument("--ventaja", nargs="?", const=True, default=False, metavar="MOTIVO")

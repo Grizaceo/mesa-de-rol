@@ -100,6 +100,7 @@ desincronizó. El paquete nunca lleva partidas, lecciones ni bibliotecas persona
 | `mesa harness lista\|sync\|verificar\|instrucciones <id>` | Adaptadores por harness y su comprobación |
 | `mesa recursos sync\|verificar` | Copia de los recursos que viaja en el paquete instalable |
 | `mesa fuentes listar\|buscar\|actualizar\|ver` | Catálogo externo con procedencia (Open5e, documento `srd-2024`): licencia, URL y fecha por entrada; la red solo en `buscar` y `actualizar` |
+| `mesa migrar [diagnosticar\|copiar <destino>] [--fichas ...]` | Diagnóstico `dry-run` y migración en copia validada de `d20-simple` a `dnd-2024` (sin tocar la partida original) |
 
 Todos los comandos que tiran dados o cambian algo dejan un evento en
 `partidas/<slug>/eventos.jsonl`, y el visor lo recoge en menos de un segundo.
