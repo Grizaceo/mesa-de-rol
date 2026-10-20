@@ -14,7 +14,9 @@ requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools]
-packages = ["mesa"]
+# `mesa.mapas` es un subpaquete:_maps/ tiene que ir en la lista o el wheel se
+# instala sin él y `import mesa.mapas` falla fuera del checkout (test_distribucion).
+packages = ["mesa", "mesa.mapas"]
 
 # Copia empaquetada de los recursos inmutables (visor/, partidas/_plantilla/, adaptadores/).
 # Se regenera con `bin/mesa recursos sync`; tests/test_distribucion.py vigila que esté en sincronía.

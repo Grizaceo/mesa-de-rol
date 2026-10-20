@@ -1,0 +1,89 @@
+{
+  "version": "1.2.7",
+  "title": "Torre de Guardia Fronteriza",
+  "meta": {
+    "licencia": "CC0-1.0 (Dominio Público)",
+    "fuente": "Esquema Watabou One Page Dungeon JSON",
+    "autor": "mesa-de-rol"
+  },
+  "luz": "penumbra",
+  "luces": [
+    "E5:6:6:farol del patio",
+    "L5:4.5:4.5:antorcha del torreón"
+  ],
+  "rects": [
+    {
+      "x": 0,
+      "y": 1,
+      "w": 6,
+      "h": 7
+    },
+    {
+      "x": 6,
+      "y": 4,
+      "w": 2,
+      "h": 1
+    },
+    {
+      "x": 8,
+      "y": 1,
+      "w": 6,
+      "h": 7,
+      "rotunda": true
+    }
+  ],
+  "doors": [
+    {
+      "x": 0,
+      "y": 4,
+      "dir": {
+        "x": -1,
+        "y": 0
+      },
+      "type": 1
+    },
+    {
+      "x": 6,
+      "y": 4,
+      "dir": {
+        "x": 1,
+        "y": 0
+      },
+      "type": 4
+    },
+    {
+      "x": 13,
+      "y": 4,
+      "dir": {
+        "x": 1,
+        "y": 0
+      },
+      "type": 8
+    }
+  ],
+  "columns": [
+    {
+      "x": 2,
+      "y": 3
+    },
+    {
+      "x": 2,
+      "y": 5
+    },
+    {
+      "x": 10,
+      "y": 4
+    }
+  ],
+  "water": [],
+  "notes": [
+    {
+      "ref": "1",
+      "text": "Mesa de guardia y registro de peajes",
+      "pos": {
+        "x": 4,
+        "y": 4
+      }
+    }
+  ]
+}

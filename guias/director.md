@@ -135,8 +135,9 @@ Devuelve avisos ⚠ de lo que se suele olvidar:
 - un personaje sin acción;
 - un enemigo en 0 que sigue en escena;
 - una habilidad «por combate» gastada sin combate;
-- alguien sin posición;
-- un narrador sin identificar.
+- alguien sin posición (o sin casilla, si hay mapa de zona);
+- un narrador sin identificar;
+- cinco turnos sin hechos clave nuevos, o hechos que ya no caben en el presupuesto de memoria.
 
 Para cerrar un combate, `enemigo limpiar` (recarga lo «por combate»). Para curar: `vendaje <quien>` y `descanso corto|largo`.
 
@@ -149,3 +150,68 @@ Al cambiar de escena, decide si vale la pena una imagen. Ver [`imagenes.md`](ima
 1. Escribe «guardar partida» o usa `bin/mesa guardar`, y pega el resumen.
 2. Corre `bin/mesa retro` y completa `retro.md` con evidencia.
 3. Propón lecciones a los jugadores y agrega solo las que acepten: `bin/mesa leccion agregar`. Ver [`lecciones.md`](lecciones.md).
+
+## 14. Memoria de la historia: hechos clave, «Hasta ahora» y crónica
+
+La conversación del harness crece sin parar; la memoria no. `retomar` y `contexto` traen la
+sección **Memoria de la historia**, que es canon: si choca con lo que recuerdas del chat, manda
+la memoria. Con ella, abrir una sesión nueva del harness (o dejar que compacte) no pierde nada.
+
+| Pieza | Qué es | Cómo |
+|---|---|---|
+| **Hechos clave** | Una frase por hecho que no puede olvidarse: nombres, promesas, deudas, objetos, lo que cambió | `hecho agregar "..." --categoria pnj\|lugar\|objeto\|promesa\|mundo\|trama\|personaje\|otro [--fijar]` |
+| **Hasta ahora** | El resumen corrido de la historia, en un párrafo | `memoria hasta-ahora "..."` |
+| **Crónica** | Una línea por escena cerrada | `escena nueva ... --cierre "qué pasó en la que termina"` o `memoria escena N "..."` |
+
+- **Propón, el jugador corrige.** Al cerrar cada escena (y cuando `turno` avise que van 5 turnos
+  sin hechos nuevos), anota de 1 a 3 hechos, preferiblemente dentro del mismo `turno --cambio`.
+  Dile al jugador que puede corregirlos en el visor (pestaña Hechos): sus ediciones mandan.
+- **Presupuesto.** Los fijados entran siempre; los demás, del más reciente al más antiguo, hasta
+  `memoria presupuesto` (2400 caracteres por defecto). Si `turno` avisa que hay hechos fuera,
+  fusiona los parecidos o archiva los que ya no pesan (`hecho archivar H3`). Archivar no borra.
+- **Al cambiar de escena**, actualiza «Hasta ahora» si la historia dio un giro.
+- **Nada secreto.** La memoria es pública: lo que los personajes no saben sigue en `director.md`.
+- `memoria ver` muestra exactamente lo que entra al contexto; `hecho listar --todos`, todo.
+
+## 15. Mapas: la zona en cuadrícula y el mundo
+
+**La zona** es una cuadrícula que generas o dibujas en texto, una fila por línea. Cada casilla mide 1,5 m
+(`--celda` la cambia); la diagonal cuenta como una casilla. Conocidos: `#` muro, `.` suelo,
+`+` puerta, `~` agua, `=` ventana, `^` escalera; el resto se declara con `--leyenda` (acepta etiquetas
+semánticas opcionales como `"T=mesa [dificil, cobertura=media]"`). El espacio es «fuera del mapa»
+y los dígitos quedan para las fichas.
+
+```bash
+bin/mesa mapa generar taberna --semilla 42 --nombre "El Grifo Dorado" --luz penumbra
+bin/mesa mapa zona --nombre "Puente de los Votos" --leyenda "T=mesa de escribano" \
+  --dibujo "##########\n#..T.....#\n#........+\n##########"
+bin/mesa escena posicion Cris "junto a la mesa" --celda C2
+bin/mesa mapa linea Cris "Matón"
+bin/mesa mapa area cono 4.5 --origen Cris --hacia E
+```
+
+- Usa `mapa generar <tipo>` (`mazmorra`, `taberna`, `calle`, `bosque`, `cueva`, `puente`) con `--semilla`,
+  `--ancho`, `--alto` y `--densidad` para crear rápido un mapa jugable, y retócalo con `mapa zona` si hace falta.
+- Cada carácter de la leyenda tiene semántica según el SRD 5.2.1 (bloqueo de paso/visión, terreno difícil ×2,
+  cobertura `media` +2 / `tres-cuartos` +5 / `total`, iluminación `brillante`/`penumbra`/`oscuridad` y focos con `mapa luz`).
+- Consulta con `mapa linea <origen> <destino>` y `mapa area <forma> <metros> --origen ...` en vez de calcular a ojo.
+- `escena nueva` borra el mapa; `--conservar-mapa` lo mantiene (con las posiciones) si siguen en
+  el mismo sitio. Redibujar con `mapa zona` deja sin casilla a quien quede fuera, y lo avisa.
+- Los jugadores ven la misma cuadrícula en el visor y pueden medir visión, cobertura, camino y plantillas de área tocando casillas.
+
+**El mundo** son los lugares, regiones con bioma, ríos y rutas que los personajes conocen (x hacia el este,
+y hacia el norte, en km salvo que `mundo ajustar --unidad` diga otra cosa):
+
+```bash
+bin/mesa mundo lugar Valdris --x 0 --y 0 --tipo pueblo --nota "Pueblo fronterizo"
+bin/mesa mundo lugar "Puente de los Votos" --x -0.6 --y 0.3 --tipo edificio --en Valdris
+bin/mesa mundo region "Bosque Gris" --bioma bosque --puntos "-10,5 10,15 18,-5 -8,-6"
+bin/mesa mundo trazo "Río Lis" --tipo rio --puntos "-20,12 0,0 25,-10"
+bin/mesa mundo ruta Valdris "Aethermark" --tipo camino --trazo "0,0 15,8 42,28" --ritmo normal
+bin/mesa mundo viaje Valdris "Aethermark"
+bin/mesa mundo aqui "Puente de los Votos"
+```
+
+Solo entra lo que conocen: los lugares secretos siguen en `director.md` hasta que los descubran.
+Los lugares con `--en <padre>` forman el mapa interior de ese lugar (al entrar en Valdris en el visor, se abre su mapa).
+Al viajar, actualiza `mundo aqui` en el mismo `turno`.

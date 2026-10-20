@@ -1,0 +1,121 @@
+{
+  "version": "1.2.7",
+  "title": "Cripta del Pacto Antiguo",
+  "meta": {
+    "licencia": "CC0-1.0 (Dominio Público)",
+    "fuente": "Esquema Watabou One Page Dungeon JSON",
+    "autor": "mesa-de-rol"
+  },
+  "luz": "oscuridad",
+  "luces": [
+    "D5:4.5:4.5:antorcha de bronce",
+    "M5:6:6:brasero del altar"
+  ],
+  "rects": [
+    {
+      "x": 0,
+      "y": 2,
+      "w": 5,
+      "h": 5
+    },
+    {
+      "x": 5,
+      "y": 4,
+      "w": 3,
+      "h": 1
+    },
+    {
+      "x": 8,
+      "y": 1,
+      "w": 7,
+      "h": 7,
+      "rotunda": true
+    },
+    {
+      "x": 2,
+      "y": 7,
+      "w": 1,
+      "h": 2
+    },
+    {
+      "x": 1,
+      "y": 9,
+      "w": 5,
+      "h": 3
+    }
+  ],
+  "doors": [
+    {
+      "x": 0,
+      "y": 4,
+      "dir": {
+        "x": -1,
+        "y": 0
+      },
+      "type": 3
+    },
+    {
+      "x": 5,
+      "y": 4,
+      "dir": {
+        "x": 1,
+        "y": 0
+      },
+      "type": 1
+    },
+    {
+      "x": 7,
+      "y": 4,
+      "dir": {
+        "x": 1,
+        "y": 0
+      },
+      "type": 4
+    },
+    {
+      "x": 2,
+      "y": 7,
+      "dir": {
+        "x": 0,
+        "y": 1
+      },
+      "type": 1
+    }
+  ],
+  "columns": [
+    {
+      "x": 10,
+      "y": 3
+    },
+    {
+      "x": 12,
+      "y": 3
+    },
+    {
+      "x": 10,
+      "y": 5
+    },
+    {
+      "x": 12,
+      "y": 5
+    }
+  ],
+  "water": [
+    {
+      "x": 2,
+      "y": 9,
+      "w": 3,
+      "h": 2
+    }
+  ],
+  "notes": [
+    {
+      "ref": "1",
+      "text": "Atril de piedra con un contrato grabado en basalto",
+      "pos": {
+        "x": 13,
+        "y": 4
+      }
+    }
+  ]
+}

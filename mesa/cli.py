@@ -13,7 +13,10 @@ import sys
 from contextlib import nullcontext
 from pathlib import Path
 
-from . import bloqueo, capacidades, dados, distribucion, estado, fuentes, harness, imagenes, informes, lecciones, reglas, sesion
+from . import (
+    bloqueo, capacidades, chat, dados, distribucion, estado, fuentes, harness, imagenes, informes, lecciones, mapas,
+    memoria, reglas, sesion,
+)
 from .texto import con_signo, norm
 
 # Comandos que escriben estado de la partida: `main` les toma el candado del archivo
@@ -23,15 +26,23 @@ ESCRIBEN = frozenset({
     "retomar", "pausar", "tirar", "suerte", "prueba", "ataque", "dano",
     "vida", "condicion", "habilidad", "vendaje", "descanso", "enemigo", "nivel",
     "escena", "pnj", "pista", "documento", "trama", "misterio", "recurso", "reloj",
-    "turno", "regla", "nota", "imagen",
+    "turno", "regla", "nota", "imagen", "hecho", "memoria", "mapa", "mundo",
 })
+
+# Subacciones de solo lectura de comandos que en general escriben: no toman el candado.
+SOLO_LECTURA = {
+    "documento": {"ver"}, "imagen": {"buscar", "biblioteca-agregar"},
+    "hecho": {"listar"}, "memoria": {"ver"},
+    "mapa": {"ver", "linea", "area", "catalogo"},
+    "mundo": {"ver", "viaje"},
+}
 
 # Comandos que `turno --cambio` puede aplicar junto con el turno: todos cargan el estado con
 # _cargar y lo cierran con _cerrar, así que dentro de un lote comparten una sola carga y un
 # solo guardado.
 CAMBIOS = (
     "vida", "condicion", "habilidad", "vendaje", "descanso", "enemigo", "nivel", "escena", "pnj",
-    "pista", "documento", "trama", "misterio", "recurso", "reloj", "regla",
+    "pista", "documento", "trama", "misterio", "recurso", "reloj", "regla", "hecho", "memoria", "mapa", "mundo",
 )
 
 # Lote en curso de `turno --cambio`: {"slug", "datos", "hechos": [(evento, texto)]}.
@@ -69,13 +80,24 @@ def _cerrar(args, slug: str, datos: dict, evento: dict, texto: str) -> None:
     _imprimir(args, evento, texto)
 
 
+def _cerrar_mapa(args, slug: str, datos: dict, evento: dict, resumen: str) -> None:
+    """Cierra una acción que deja un mapa de zona nuevo.
+
+    Recoloca las fichas en la rejilla nueva y avisa de las que se quedaron fuera. Suelto,
+    el narrador recibe el mapa entero en texto; dentro de `turno` ya se imprime al final,
+    así que basta la línea de `resumen`. El evento lo arma cada acción porque cada una
+    publica sus propios campos.
+    """
+    perdidos = mapas.reubicar(datos)
+    texto = mapas.zona_texto(datos) if _lote is None else resumen
+    if perdidos:
+        texto += f"\n⚠ Quedaron sin casilla (fuera del mapa nuevo): {', '.join(perdidos)}."
+    _cerrar(args, slug, datos, evento, texto)
+
+
 def _candado_de_escritura(args):
     """Toma el candado de la partida para el comando completo, si el comando escribe."""
-    if args.comando not in ESCRIBEN:
-        return nullcontext()
-    if args.comando == "documento" and args.accion != "agregar":
-        return nullcontext()
-    if args.comando == "imagen" and args.accion in ("buscar", "biblioteca-agregar"):
+    if args.comando not in ESCRIBEN or getattr(args, "accion", None) in SOLO_LECTURA.get(args.comando, ()):
         return nullcontext()
     try:
         ruta = estado.ruta_candado(estado.slug_activo(args.partida))
@@ -133,7 +155,7 @@ def c_estado(args) -> None:
 
 def c_revisar(args) -> None:
     slug, datos = _cargar(args)
-    avisos = informes.revisar(datos)
+    avisos = informes.revisar(datos, eventos=estado.leer_eventos(slug))
     print("\n".join(f"⚠ {a}" for a in avisos) if avisos else "Sin avisos.")
 
 
@@ -419,10 +441,19 @@ def c_nivel(args) -> None:
 def c_escena(args) -> None:
     slug, datos = _cargar(args)
     escena = datos.setdefault("escena", {})
-    if args.accion == "posicion" and (not args.quien or not (args.donde or args.quitar)):
-        raise ValueError('uso: escena posicion <quien> "<dónde, con metros>" (o --quitar)')
+    if args.accion == "posicion" and (not args.quien or not (args.donde or args.celda or args.quitar)):
+        raise ValueError('uso: escena posicion <quien> "<dónde, con metros>" [--celda C4] (o --quitar)')
+    if args.cierre and args.accion != "nueva":
+        raise ValueError("--cierre va con `escena nueva`: resume la escena que termina")
+    aviso = ""
     if args.accion == "nueva":
+        anterior = dict(escena)
+        numero = int(anterior.get("numero") or 0)
+        if numero >= 1 and not memoria.anotar_escena(datos, numero, args.cierre, anterior.get("titulo"), anterior.get("lugar")).get("resumen"):
+            aviso = f"\n⚠ La escena {numero} se cerró sin resumen en la crónica: `memoria escena {numero} \"<qué pasó>\"`."
         escena.clear()
+        if args.conservar_mapa and anterior.get("mapa"):
+            escena.update({"mapa": anterior["mapa"], "posiciones": anterior.get("posiciones", [])})
         escena["numero"] = int(datos.get("escenas_jugadas", 0)) + 1
         datos["escenas_jugadas"] = escena["numero"]
         _recargar(datos, {"escena"})
@@ -430,15 +461,200 @@ def c_escena(args) -> None:
         for campo in ("titulo", "lugar", "hora", "clima", "descripcion"):
             if getattr(args, campo):
                 escena[campo] = getattr(args, campo)
-        texto = f"Escena {escena.get('numero')}: {escena.get('titulo', '')} — {escena.get('lugar', '')}"
+        texto = f"Escena {escena.get('numero')}: {escena.get('titulo', '')} — {escena.get('lugar', '')}{aviso}"
         evento = {"tipo": "escena", "accion": args.accion, **{k: escena.get(k) for k in ("numero", "titulo", "lugar", "hora")}}
+        if args.cierre:
+            evento["cierre"] = args.cierre
     else:
+        celda = None
+        if args.celda and not args.quitar:
+            if not escena.get("mapa"):
+                raise ValueError("no hay mapa de zona: dibújalo con `mapa zona --dibujo ...` o fija la posición solo con texto")
+            celda = mapas.validar_celda(escena["mapa"], args.celda)
+        donde = args.donde or f"casilla {celda}"
         posiciones = escena.setdefault("posiciones", [])
         posiciones[:] = [p for p in posiciones if norm(p["quien"]) != norm(args.quien)]
         if not args.quitar:
-            posiciones.append({"quien": args.quien, "donde": args.donde})
-        texto = f"{args.quien}: {'fuera de escena' if args.quitar else args.donde}"
-        evento = {"tipo": "posicion", "quien": args.quien, "donde": None if args.quitar else args.donde}
+            posiciones.append({"quien": args.quien, "donde": donde, **({"celda": celda} if celda else {})})
+        texto = f"{args.quien}: {'fuera de escena' if args.quitar else donde}{f' [{celda}]' if celda and args.donde else ''}"
+        evento = {"tipo": "posicion", "quien": args.quien, "donde": None if args.quitar else donde, **({"celda": celda} if celda else {})}
+    _cerrar(args, slug, datos, evento, texto)
+
+
+def c_hecho(args) -> None:
+    slug, datos = _cargar(args)
+    if args.accion == "listar":
+        print(memoria.listado(datos, args.todos))
+        return
+    evento, texto = memoria.aplicar(
+        datos, args.accion, ident=getattr(args, "id", None), texto=getattr(args, "texto", None),
+        categoria=getattr(args, "categoria", None), fijado=getattr(args, "fijar", False),
+    )
+    _cerrar(args, slug, datos, evento, texto)
+
+
+def c_memoria(args) -> None:
+    slug, datos = _cargar(args)
+    if args.accion == "ver":
+        print(memoria.ver(datos, args.todo))
+        return
+    if args.accion == "presupuesto":
+        evento, texto = memoria.fijar_presupuesto(datos, args.caracteres)
+    else:
+        evento, texto = memoria.aplicar(datos, args.accion, texto=args.texto, numero=getattr(args, "numero", None))
+    _cerrar(args, slug, datos, evento, texto)
+
+
+def c_mapa(args) -> None:
+    slug, datos = _cargar(args)
+    escena = datos.setdefault("escena", {})
+    if args.accion == "ver":
+        print(mapas.zona_texto(datos) or "Sin mapa de zona: `mapa zona --dibujo \"#####\\n#...#\\n#####\"`.")
+        return
+    if args.accion == "catalogo":
+        items = mapas.leer_catalogo_mapas(args.consulta or "")
+        if args.json:
+            print(json.dumps(items, ensure_ascii=False, indent=2))
+            return
+        if not items:
+            print("Sin mapas en biblioteca/mapas para esa búsqueda.")
+            return
+        for x in items:
+            print(f"{x['id']:<24} [{x.get('ambito', 'zona')} · {x.get('formato', '')} · {x.get('dimensiones', '')}] {x.get('nombre', '')} — {x.get('licencia', '')}")
+            if x.get("descripcion"):
+                print(f"  {x['descripcion']}")
+        return
+    if args.accion == "cargar":
+        ambito, info = mapas.cargar_mapa_catalogo(datos, args.id, slug=slug, nombre=args.nombre)
+        if ambito == "mundo":
+            # El mundo no recoloca fichas: solo se elige entre el texto entero o la línea.
+            _cerrar(args, slug, datos, {"tipo": "mundo", "accion": "cargar", **info},
+                    mapas.mundo_texto(datos) if _lote is None else f"Mapa del mundo cargado ({info['id']}).")
+            return
+        evento = {"tipo": "mapa", "accion": "cargar", **info}
+        _cerrar_mapa(args, slug, datos, evento,
+                     f"Mapa de zona cargado ({info['id']}, {info['columnas']}×{info['filas']} casillas).")
+        return
+    if args.accion == "importar":
+        escena["mapa"] = mapas.importar_zona_archivo(
+            args.archivo, slug=slug, nombre=args.nombre,
+            celda=args.celda, luz=args.luz, licencia=args.licencia, fuente=args.fuente,
+        )
+        filas = escena["mapa"]["filas"]
+        orig = escena["mapa"].get("origen") or {}
+        evento = {"tipo": "mapa", "accion": "importar", "nombre": escena["mapa"].get("nombre"),
+                  "columnas": len(filas[0]), "filas": len(filas), "fondo": escena["mapa"].get("fondo"), **orig}
+        _cerrar_mapa(args, slug, datos, evento,
+                     f"Mapa de zona importado ({len(filas[0])}×{len(filas)} casillas).")
+        return
+    if args.accion == "linea":
+        res, texto = mapas.consultar_linea(datos, args.origen, args.destino)
+        _imprimir(args, res, texto)
+        return
+    if args.accion == "area":
+        res, texto = mapas.consultar_area(datos, args.forma, args.tamano, args.origen, hacia=args.hacia, ancho=args.ancho)
+        _imprimir(args, res, texto)
+        return
+    if args.accion == "quitar":
+        escena.pop("mapa", None)
+        for p in escena.get("posiciones") or []:
+            p.pop("celda", None)
+        _cerrar(args, slug, datos, {"tipo": "mapa", "accion": "quitar"}, "Mapa de zona retirado.")
+        return
+    if args.accion == "terreno":
+        dificil = True if args.dificil else (False if args.normal else None)
+        bloq_paso = True if args.bloquea_paso else (False if args.paso_libre else None)
+        bloq_vis = True if args.bloquea_vision else (False if args.vision_libre else None)
+        sem = mapas.poner_terreno(
+            escena.get("mapa"), args.caracter,
+            cobertura=args.cobertura, dificil=dificil,
+            bloquea_paso=bloq_paso, bloquea_vision=bloq_vis,
+        )
+        sig = (escena["mapa"].get("leyenda") or {}).get(args.caracter, args.caracter)
+        res_txt = mapas._resumen_terreno(sem) or "suelo normal"
+        texto = f"Terreno '{args.caracter}' ({sig}): {res_txt}"
+        evento = {"tipo": "mapa", "accion": "terreno", "caracter": args.caracter, **sem}
+        _cerrar(args, slug, datos, evento, texto)
+        return
+    if args.accion == "luz":
+        res = mapas.poner_luz(escena.get("mapa"), args.nivel, args.foco, args.limpiar_focos)
+        focos_txt = f" ({len(res['luces'])} focos)" if res["luces"] else ""
+        texto = f"Luz de la zona: {res['luz']}{focos_txt}"
+        evento = {"tipo": "mapa", "accion": "luz", **res}
+        _cerrar(args, slug, datos, evento, texto)
+        return
+    anterior = escena.get("mapa")
+    if args.accion == "generar":
+        escena["mapa"] = mapas.generar_zona(
+            args.tipo, semilla=args.semilla, ancho=args.ancho, alto=args.alto,
+            densidad=args.densidad, celda=args.celda, nombre=args.nombre,
+            luz=args.luz, anterior=anterior,
+        )
+        filas = escena["mapa"]["filas"]
+        gen = escena["mapa"]["generador"]
+        evento = {"tipo": "mapa", "accion": "generar", "nombre": escena["mapa"].get("nombre"), **gen}
+        _cerrar_mapa(args, slug, datos, evento,
+                     f"Mapa de zona generado ({gen['tipo']}, {len(filas[0])}×{len(filas)} casillas, semilla {gen['semilla']}).")
+        return
+    if args.dibujo is None and not anterior:
+        raise ValueError('falta --dibujo: una fila por línea, p. ej. --dibujo "#####\\n#...#\\n#####"')
+    dibujo = args.dibujo if args.dibujo is not None else "\n".join(anterior["filas"])
+    escena["mapa"] = mapas.nueva_zona(dibujo, args.leyenda, args.celda, args.nombre, anterior=anterior, luz=args.luz)
+    filas = escena["mapa"]["filas"]
+    evento = {"tipo": "mapa", "accion": "zona", "nombre": escena["mapa"].get("nombre"),
+              "columnas": len(filas[0]), "filas": len(filas)}
+    _cerrar_mapa(args, slug, datos, evento, f"Mapa de zona dibujado ({len(filas[0])}×{len(filas)} casillas).")
+
+
+def c_mundo(args) -> None:
+    slug, datos = _cargar(args)
+    if args.accion == "ver":
+        print(mapas.mundo_texto(datos) or "Sin mapa del mundo: `mundo lugar \"<nombre>\" --x N --y N --tipo pueblo`.")
+        return
+    if args.accion == "viaje":
+        res, texto = mapas.consultar_viaje(datos, args.de, args.a, ritmo=args.ritmo)
+        _imprimir(args, res, texto)
+        return
+    if args.accion == "lugar":
+        visitado = True if args.visitado else None
+        lugar, nuevo = mapas.poner_lugar(datos, args.nombre, args.x, args.y, args.tipo, args.nota, en=args.en, visitado=visitado)
+        en_txt = f" en {lugar['en']}" if lugar.get("en") else ""
+        texto = f"{'Lugar nuevo' if nuevo else 'Lugar'} en el mapa del mundo: {lugar['nombre']} ({lugar.get('tipo')}{en_txt}, {mapas.cifra(lugar['x'])}·{mapas.cifra(lugar['y'])})"
+        evento = {"tipo": "mundo", "accion": "lugar", "id": lugar["id"], "nombre": lugar["nombre"], "nuevo": nuevo}
+    elif args.accion == "ruta":
+        ruta = mapas.poner_ruta(datos, args.de, args.a, args.tipo, args.tiempo, args.distancia, args.quitar, trazo=args.trazo, ritmo=args.ritmo)
+        det = mapas._detalle_ruta(ruta)
+        extra = f" ({det})" if det and not args.quitar else ""
+        texto = f"Ruta {'quitada' if args.quitar else 'en el mapa'}: {args.de} – {args.a}{extra}"
+        evento = {"tipo": "mundo", "accion": "ruta", "de": ruta["de"], "a": ruta["a"], "quitada": bool(args.quitar)}
+    elif args.accion == "region":
+        reg = mapas.poner_region(datos, args.nombre, bioma=args.bioma, puntos=args.puntos, nota=args.nota, en=args.en, quitar=args.quitar)
+        texto = f"Región {'quitada' if args.quitar else 'en el mapa'}: {reg['nombre']} ({reg.get('bioma')})"
+        evento = {"tipo": "mundo", "accion": "region", "id": reg["id"], "nombre": reg["nombre"], "bioma": reg.get("bioma"), "quitada": bool(args.quitar)}
+    elif args.accion == "trazo":
+        trazo = mapas.poner_trazo(datos, args.nombre, tipo=args.tipo, puntos=args.puntos, nota=args.nota, en=args.en, quitar=args.quitar)
+        texto = f"Trazo {'quitado' if args.quitar else 'en el mapa'}: {trazo['nombre']} ({trazo.get('tipo')}, {mapas.cifra(trazo.get('longitud', 0))} km)"
+        evento = {"tipo": "mundo", "accion": "trazo", "id": trazo["id"], "nombre": trazo["nombre"], "tipo": trazo.get("tipo"), "quitado": bool(args.quitar)}
+    elif args.accion == "generar":
+        gen = mapas.generar_mundo(datos, semilla=args.semilla, bioma=args.bioma, lugares_n=args.lugares, en=args.en, nombre=args.nombre)
+        texto = mapas.mundo_texto(datos) if _lote is None else f"Mapa del mundo generado (semilla {gen['semilla']}, {gen['lugares']} lugares)."
+        evento = {"tipo": "mundo", "accion": "generar", **gen}
+    elif args.accion == "importar":
+        res = mapas.importar_mundo_archivo(datos, args.archivo, nombre=args.nombre, licencia=args.licencia, fuente=args.fuente)
+        texto = mapas.mundo_texto(datos) if _lote is None else f"Mapa del mundo importado ({res['lugares']} lugares, {res['regiones']} regiones)."
+        evento = {"tipo": "mundo", "accion": "importar", **res}
+    elif args.accion == "aqui":
+        lugar = mapas.ir_a(datos, args.nombre)
+        texto = f"Ahora están en: {lugar['nombre']}"
+        evento = {"tipo": "mundo", "accion": "aqui", "id": lugar["id"], "nombre": lugar["nombre"]}
+    elif args.accion == "quitar":
+        lugar = mapas.quitar_lugar(datos, args.nombre)
+        texto = f"{lugar['nombre']} sale del mapa del mundo (y sus rutas)"
+        evento = {"tipo": "mundo", "accion": "quitar", "id": lugar["id"], "nombre": lugar["nombre"]}
+    else:
+        m = mapas.ajustar_mundo(datos, args.nombre, args.unidad)
+        texto = f"Mapa del mundo: {m.get('nombre') or 'sin nombre'} (coordenadas en {m['unidad']})"
+        evento = {"tipo": "mundo", "accion": "ajustar", "nombre": m.get("nombre"), "unidad": m["unidad"]}
     _cerrar(args, slug, datos, evento, texto)
 
 
@@ -567,6 +783,8 @@ def _parsear_cambio(texto: str) -> argparse.Namespace:
     motivo = capacidades.revisar(cambio, _perfil)
     if motivo:
         raise ValueError(f"cambio no permitido: {motivo}")
+    if getattr(cambio, "accion", None) in SOLO_LECTURA.get(cambio.comando, ()):
+        raise ValueError(f"cambio no permitido: `{cambio.comando} {cambio.accion}` es una consulta de solo lectura")
     return cambio
 
 
@@ -589,8 +807,9 @@ def c_turno(args) -> None:
     cambia_estado = bool(hechos) or pausada
     registrados = estado.escribir(slug, datos=datos if cambia_estado else None, eventos=eventos)
     cambios, evento = registrados[:-1], registrados[-1]
-    numero = sum(1 for e in estado.leer_eventos(slug) if e.get("tipo") == "turno")
-    avisos = informes.revisar(datos, acciones)
+    todos = estado.leer_eventos(slug)
+    numero = sum(1 for e in todos if e.get("tipo") == "turno")
+    avisos = informes.revisar(datos, acciones, eventos=todos)
     if args.json:
         print(json.dumps({"turno": evento, "cambios": cambios, "avisos": avisos}, ensure_ascii=False, indent=2))
         return
@@ -598,6 +817,9 @@ def c_turno(args) -> None:
     lineas += [f"⚠ {a}" for a in avisos]
     lineas += ["", "Para la DECISIÓN, lo que cada uno tiene a mano:"]
     lineas += [f"- {informes.ficha_breve(p)}" for p in datos.get("personajes", [])]
+    zona = mapas.zona_texto(datos)
+    if zona:
+        lineas += ["", zona]
     print("\n".join(lineas))
 
 
@@ -684,7 +906,9 @@ def c_retro(args) -> None:
 def c_servir(args) -> None:
     from . import servidor
 
-    servidor.servir(args.host, args.puerto)
+    comando = shlex.split(args.agente_cmd) if args.agente_cmd else None
+    servidor.servir(args.host, args.puerto, agente=args.agente or ("agente" if comando else None), comando=comando,
+                    tailscale=args.tailscale, usuarios=args.tailscale_usuario)
 
 
 # ---------- parser ----------
@@ -788,6 +1012,99 @@ def _parser() -> argparse.ArgumentParser:
     for campo in ("titulo", "lugar", "hora", "clima", "descripcion"):
         s.add_argument(f"--{campo}")
     s.add_argument("--quitar", action="store_true")
+    s.add_argument("--celda", help="casilla en el mapa de zona, p. ej. C4 (columna, fila)")
+    s.add_argument("--cierre", help="con `nueva`: resumen de la escena que termina, para la crónica")
+    s.add_argument("--conservar-mapa", action="store_true", help="con `nueva`: mantiene el mapa de zona y las posiciones")
+    s = cmd("hecho", c_hecho, "hechos clave de la memoria: agregar | editar | fijar | soltar | archivar | restaurar | listar")
+    hsub = s.add_subparsers(dest="accion", required=True)
+    e = hsub.add_parser("agregar", help="anota un hecho clave (público: el jugador lo ve y lo corrige)")
+    e.add_argument("texto"); e.add_argument("--categoria", choices=memoria.CATEGORIAS, default="otro")
+    e.add_argument("--fijar", action="store_true", help="entra siempre al contexto, aunque no quepa en el presupuesto")
+    e = hsub.add_parser("editar", help="corrige el texto o la categoría"); e.add_argument("id"); e.add_argument("texto", nargs="?")
+    e.add_argument("--categoria", choices=memoria.CATEGORIAS)
+    for accion, ayuda in (("fijar", "entra siempre al contexto"), ("soltar", "entra si cabe en el presupuesto"),
+                          ("archivar", "sale del contexto, sigue a la vista"), ("restaurar", "vuelve de archivado")):
+        hsub.add_parser(accion, help=ayuda).add_argument("id")
+    e = hsub.add_parser("listar", help="los hechos y si entran al contexto"); e.add_argument("--todos", action="store_true")
+    s = cmd("memoria", c_memoria, "memoria de la historia: hasta-ahora | escena | presupuesto | ver")
+    msub = s.add_subparsers(dest="accion", required=True)
+    msub.add_parser("hasta-ahora", help="reescribe el resumen corrido de la historia").add_argument("texto")
+    e = msub.add_parser("escena", help="escribe o corrige la línea de crónica de una escena")
+    e.add_argument("numero", type=int); e.add_argument("texto")
+    msub.add_parser("presupuesto", help="caracteres de hechos no fijados en el contexto").add_argument("caracteres", type=int)
+    msub.add_parser("ver", help="lo que entra al contexto del director").add_argument("--todo", action="store_true")
+    s = cmd("mapa", c_mapa, "mapa de zona en cuadrícula: catalogo | cargar | importar | generar | zona | terreno | luz | linea | area | quitar | ver")
+    asub = s.add_subparsers(dest="accion", required=True)
+    e = asub.add_parser("catalogo", help="lista los mapas pre-hechos de biblioteca/mapas/ con su licencia")
+    e.add_argument("consulta", nargs="?", default="", help="filtro opcional por nombre o etiqueta")
+    e = asub.add_parser("cargar", help="carga un mapa pre-hecho de biblioteca/mapas/ por su id")
+    e.add_argument("id"); e.add_argument("--nombre")
+    e = asub.add_parser("importar", help="importa un archivo local .dd2vtt/.uvtt o Watabou JSON (solo CLI)")
+    e.add_argument("archivo"); e.add_argument("--nombre"); e.add_argument("--celda", type=float)
+    e.add_argument("--luz", choices=mapas.LUCES); e.add_argument("--licencia"); e.add_argument("--fuente")
+    e = asub.add_parser("generar", help=f"genera un mapa de zona reproducible ({', '.join(mapas.TIPOS_ZONA)})")
+    e.add_argument("tipo", help="mazmorra, taberna (o interior), calle (o plaza), bosque (o claro), cueva, puente")
+    e.add_argument("--semilla", help="semilla para reproducir el mismo mapa")
+    e.add_argument("--ancho", type=int, help="columnas (5–26)")
+    e.add_argument("--alto", type=int, help="filas (5–40)")
+    e.add_argument("--densidad", choices=mapas.DENSIDADES, default="normal")
+    e.add_argument("--celda", type=float, help=f"metros por casilla (por defecto {mapas.cifra(mapas.CELDA)})")
+    e.add_argument("--nombre"); e.add_argument("--luz", choices=mapas.LUCES)
+    e = asub.add_parser("zona", help="dibuja (o redibuja) la zona: una fila de texto por línea")
+    e.add_argument("--dibujo", help="filas separadas por \\n; espacio = fuera del mapa; dígitos reservados para fichas")
+    e.add_argument("--leyenda", action="append", metavar="C=SIGNIFICADO", help=f"repetible; ya conocidos: {', '.join(f'{k} {v}' for k, v in mapas.LEYENDA_BASE.items())}")
+    e.add_argument("--celda", type=float, help=f"metros por casilla (por defecto {mapas.cifra(mapas.CELDA)})")
+    e.add_argument("--nombre"); e.add_argument("--luz", choices=mapas.LUCES, help="iluminación base de la zona")
+    e = asub.add_parser("terreno", help="ajusta semántica de un carácter de la leyenda (cobertura, terreno difícil, paso/visión)")
+    e.add_argument("caracter")
+    e.add_argument("--cobertura", choices=mapas.COBERTURAS)
+    e.add_argument("--dificil", action="store_true"); e.add_argument("--normal", action="store_true")
+    e.add_argument("--bloquea-paso", action="store_true"); e.add_argument("--paso-libre", action="store_true")
+    e.add_argument("--bloquea-vision", action="store_true"); e.add_argument("--vision-libre", action="store_true")
+    e = asub.add_parser("luz", help="iluminación ambiental y focos puntuales")
+    e.add_argument("nivel", nargs="?", choices=mapas.LUCES, help="brillante, penumbra u oscuridad")
+    e.add_argument("--foco", action="append", metavar="CELDA:BRILLANTE:PENUMBRA[:NOMBRE]", help="p. ej. G4:6:6:farol")
+    e.add_argument("--limpiar-focos", action="store_true")
+    e = asub.add_parser("linea", help="consulta línea de visión, cobertura (SRD) y camino entre dos casillas o fichas")
+    e.add_argument("origen"); e.add_argument("destino")
+    e = asub.add_parser("area", help="casillas y fichas dentro de una plantilla de área (cono, esfera, linea, cubo)")
+    e.add_argument("forma", choices=mapas.FORMAS_AREA); e.add_argument("tamano", type=float, help="metros de radio/largo/lado")
+    e.add_argument("--origen", required=True, help="casilla o ficha de origen")
+    e.add_argument("--hacia", help="casilla, ficha o rumbo (N, NE, E, SE, S, SO, O, NO)")
+    e.add_argument("--ancho", type=float, help="ancho en metros para `linea` (por defecto 1 casilla)")
+    asub.add_parser("quitar", help="retira el mapa de zona"); asub.add_parser("ver", help="el mapa como lo lee el narrador")
+    s = cmd("mundo", c_mundo, "mapa del mundo: lugar | ruta | region | trazo | viaje | generar | aqui | quitar | ajustar | ver")
+    wsub = s.add_subparsers(dest="accion", required=True)
+    e = wsub.add_parser("lugar", help="crea o actualiza un lugar que los personajes conocen")
+    e.add_argument("nombre"); e.add_argument("--x", type=float); e.add_argument("--y", type=float)
+    e.add_argument("--tipo", help="ciudad, pueblo, edificio, bosque, montaña, río, puerto, ruina..."); e.add_argument("--nota")
+    e.add_argument("--en", help="lugar padre donde está anidado (p. ej. Valdris)")
+    e.add_argument("--visitado", action="store_true", help="marca el lugar como ya visitado")
+    e = wsub.add_parser("ruta", help="une dos lugares (o la quita con --quitar)"); e.add_argument("de"); e.add_argument("a")
+    e.add_argument("--tipo", help="camino, río, sendero..."); e.add_argument("--tiempo", help="p. ej. '30 min a pie'")
+    e.add_argument("--distancia", help="p. ej. '2 km'"); e.add_argument("--trazo", help="polilínea 'x1,y1 x2,y2 ...'")
+    e.add_argument("--ritmo", choices=tuple(mapas.RITMOS_VIAJE), help="calcula el tiempo según el ritmo del SRD")
+    e.add_argument("--quitar", action="store_true")
+    e = wsub.add_parser("region", help="polígono con bioma (bosque, llanura, montana, pantano, desierto, costa, agua, urbano, helado)")
+    e.add_argument("nombre"); e.add_argument("--bioma", choices=mapas.BIOMAS)
+    e.add_argument("--puntos", help="vértices 'x1,y1 x2,y2 x3,y3 ...'"); e.add_argument("--nota")
+    e.add_argument("--en", help="lugar padre opcional"); e.add_argument("--quitar", action="store_true")
+    e = wsub.add_parser("trazo", help="río, camino, costa o frontera como polilínea")
+    e.add_argument("nombre"); e.add_argument("--tipo", choices=mapas.TIPOS_TRAZO)
+    e.add_argument("--puntos", help="puntos 'x1,y1 x2,y2 ...'"); e.add_argument("--nota")
+    e.add_argument("--en", help="lugar padre opcional"); e.add_argument("--quitar", action="store_true")
+    e = wsub.add_parser("viaje", help="consulta distancia y tiempo de viaje según el ritmo del SRD (sin mutar)")
+    e.add_argument("de"); e.add_argument("a"); e.add_argument("--ritmo", choices=tuple(mapas.RITMOS_VIAJE))
+    e = wsub.add_parser("generar", help="genera de forma reproducible una comarca o el mapa interior de un pueblo (--en)")
+    e.add_argument("--semilla", help="semilla reproducible"); e.add_argument("--bioma", choices=mapas.BIOMAS, default="bosque")
+    e.add_argument("--lugares", type=int, default=4, help="cantidad de lugares (2–12)")
+    e.add_argument("--en", help="lugar padre para generar su mapa interior"); e.add_argument("--nombre")
+    e = wsub.add_parser("importar", help="importa un archivo JSON/GeoJSON de Azgaar en el mapa del mundo (solo CLI)")
+    e.add_argument("archivo"); e.add_argument("--nombre"); e.add_argument("--licencia"); e.add_argument("--fuente")
+    wsub.add_parser("aqui", help="dónde están ahora").add_argument("nombre")
+    wsub.add_parser("quitar", help="saca un lugar del mapa (y sus rutas)").add_argument("nombre")
+    e = wsub.add_parser("ajustar", help="nombre del mapa y unidad de las coordenadas"); e.add_argument("--nombre"); e.add_argument("--unidad")
+    wsub.add_parser("ver", help="el mapa del mundo como lo lee el narrador")
     s = cmd("pnj", c_pnj, "crea o actualiza un PNJ visible para los jugadores")
     s.add_argument("nombre"); s.add_argument("--rol"); s.add_argument("--actitud", choices=["amistosa", "indiferente", "hostil"])
     s.add_argument("--estado"); s.add_argument("--nota")
@@ -834,7 +1151,12 @@ def _parser() -> argparse.ArgumentParser:
     e = lsub.add_parser("fase", help="limita la lección a una fase: sesion-cero | siempre"); e.add_argument("id")
     e.add_argument("fase", choices=lecciones.FASES + ("siempre",))
     cmd("retro", c_retro, "estadísticas de la partida y plantilla de retrospectiva")
-    s = cmd("servir", c_servir, "abre el visor local"); s.add_argument("--host", default="127.0.0.1"); s.add_argument("--puerto", type=int, default=8765)
+    s = cmd("servir", c_servir, "abre el visor local (con --agente, también el chat con el narrador)")
+    s.add_argument("--host", default="127.0.0.1"); s.add_argument("--puerto", type=int, default=8765)
+    s.add_argument("--agente", choices=sorted(chat.AGENTES), help="narrador del chat por ACP: hermes (perfil narrador), devin o gemini")
+    s.add_argument("--agente-cmd", metavar="'COMANDO ACP'", help="otro agente ACP por stdio, p. ej. 'hermes -p otro acp'")
+    s.add_argument("--tailscale", action="store_true", help="deja escribir por `tailscale serve` al dueño de este nodo")
+    s.add_argument("--tailscale-usuario", action="append", metavar="LOGIN", help="con --tailscale: quién puede escribir (repetible)")
     return p
 
 

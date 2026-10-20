@@ -8,7 +8,7 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
-from mesa import cli, estado, imagenes, mcp
+from mesa import cli, estado, imagenes, mapas, mcp
 
 from apoyo import REPO, PNG_1X1, dados_fijos, repo_temporal
 
@@ -135,6 +135,54 @@ class TestCapacidades(unittest.TestCase):
                 error, texto = llamar("comando", {"args": args})
                 self.assertTrue(error, args)
                 self.assertIn("no es una acción de juego", texto)
+
+    def test_mapas_y_mundo_importan_solo_por_cli(self):
+        """`mapa|mundo importar` lee un archivo de fuera: la CLI y el MCP, no."""
+        with repo_temporal() as raiz, tempfile.TemporaryDirectory() as fuera:
+            importado = Path(fuera) / "cueva.uvtt"
+            importado.write_text('{"meta":{"name":"Fuera"},"data":{"width":2,"height":2,"grid":[[0,0],[0,0]]}}', encoding="utf-8")
+            centinela = Path(fuera) / "secreto.txt"
+            centinela.write_text("CENTINELA-IMPORTAR", encoding="utf-8")
+            for args in (
+                ["mapa", "importar", str(importado)],
+                ["mundo", "importar", str(importado)],
+                ["mapa", "importar", str(centinela)],
+            ):
+                with self.subTest(args=args):
+                    error, texto = llamar("comando", {"args": args})
+                    self.assertTrue(error, args)
+                    self.assertIn("CLI", texto)
+            # Y tampoco anidados en un cambio de turno, por lista o por texto.
+            for cambio in (
+                ["mapa", "importar", str(importado)],
+                ["mundo", "importar", str(importado)],
+            ):
+                with self.subTest(cambio=cambio):
+                    error, texto = llamar("turno", {"resumen": "x", "acciones": {"Jualjin": "miro"},
+                                                    "cambios": [cambio]})
+                    self.assertTrue(error, texto)
+                    self.assertIn("CLI", texto)
+            error, texto = llamar("turno", {"resumen": "x", "acciones": {"Jualjin": "miro"},
+                                            "cambios": ["mapa importar " + str(importado)]})
+            self.assertTrue(error, texto)
+            # Nada entró en la partida.
+            estado_c = estado.cargar("neva")
+            self.assertIsNone((estado_c.get("escena") or {}).get("mapa"))
+            texto_partida = (raiz / "partidas" / "neva" / "partida.json").read_text(encoding="utf-8")
+            self.assertNotIn("CENTINELA-IMPORTAR", texto_partida)
+
+    def test_el_catalogo_curado_sigue_siendo_juego(self):
+        """Lo bloqueado es `importar`, no los mapas: `mapa cargar <id>` va por MCP."""
+        with repo_temporal() as raiz:
+            import shutil
+            destino = raiz / "biblioteca" / "mapas"
+            shutil.copytree(REPO / "biblioteca" / "mapas", destino)
+            catalogo = mapas.leer_catalogo_mapas("puente")
+            self.assertTrue(catalogo, "el catálogo de pruebas no está donde se esperaba")
+            ident = catalogo[0]["id"]
+            error, texto = llamar("comando", {"args": ["mapa", "cargar", ident]})
+            self.assertFalse(error, texto)
+            self.assertIsNotNone((estado.cargar("neva").get("escena") or {}).get("mapa"))
 
     def test_centinela_externo_no_se_publica_por_documento_ni_anidado(self):
         with repo_temporal() as raiz, tempfile.TemporaryDirectory() as fuera:

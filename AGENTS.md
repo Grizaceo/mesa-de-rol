@@ -23,12 +23,13 @@ cómo arranca cada harness, en `guias/harnesses.md`.
    - el traspaso pendiente («Retomar aquí»),
    - las lecciones aplicables,
    - las reglas de la casa,
-   - el estado y los últimos eventos.
+   - la **memoria de la historia** (hechos clave, «Hasta ahora» y crónica de escenas),
+   - el estado (con los mapas de zona y del mundo, si hay) y los últimos eventos.
 
    Para otra partida, añade `-p <slug>`; `bin/mesa partidas` las lista. **Cumple las lecciones**: son correcciones reales de jugadores. Las que ya están escritas en este contrato se marcan como incorporadas y no se repiten.
 2. Lee `partidas/<slug>/biblia.md` (estilo, mundo, PNJ, formato) y `partidas/<slug>/director.md` (secretos y relojes), este último con tu herramienta de lectura de archivos (ver «Secretos»). Consulta `reglas/d20-simple.md` cuando una regla no esté clara.
 3. Abre con **«Anteriormente…»**: como máximo 4 líneas, con tu voz, a partir del borrador que trae `retomar`. Luego continúa **exactamente** desde «Retomar aquí», sin avanzar sin la acción de cada jugador.
-4. Si tu harness puede dejar procesos en segundo plano, ofrece el visor: `bin/mesa servir` en `http://127.0.0.1:8765`.
+4. Si tu harness puede dejar procesos en segundo plano, ofrece el visor: `bin/mesa servir` en `http://127.0.0.1:8765`, para tenerlo en una ventana al lado del chat (ficha, zona, mundo, hechos, ambientación y registro).
 
 ## En cada turno
 
@@ -53,10 +54,12 @@ cómo arranca cada harness, en `guias/harnesses.md`.
    Por MCP es la herramienta `turno`, con `cambios` como listas de argumentos. Las acciones van con las palabras de los jugadores, y los cambios se aplican todos o ninguno. Cada `--cambio` es un comando de la CLI:
    - **Vida, condiciones y habilidades:** `vida`, `condicion`, `habilidad`, `vendaje`, `descanso corto|largo`.
    - **Mundo:** `pnj`, `pista`, `documento`, `trama`, `misterio`, `recurso`, `reloj`, `enemigo`.
-   - **Escena:** `escena posicion <quien> "<dónde, con metros>"`, o `escena nueva ...` al cambiar de escena (recarga las habilidades «por escena»). `enemigo limpiar` cierra el combate y recarga las «por combate».
+   - **Escena:** `escena posicion <quien> "<dónde, con metros>" [--celda C4]`, o `escena nueva ... --cierre "<qué pasó en la que termina>"` al cambiar de escena (recarga las habilidades «por escena»). `enemigo limpiar` cierra el combate y recarga las «por combate».
+   - **Mapas:** `mapa generar <tipo> --semilla N` o `mapa zona --dibujo "..."` cuando la posición importe (combate, sigilo, persecución), con cada uno en su casilla; `mapa linea` y `mapa area` para consultar visión, cobertura, movimiento y áreas; `mundo lugar|ruta|region|trazo|aqui|viaje` para los lugares (también anidados con `--en`), regiones, ríos y rutas que los personajes conocen.
+   - **Memoria:** `hecho agregar "..." --categoria ...`, `hecho archivar H3`, `memoria hasta-ahora "..."` (ver «Memoria de la historia»).
    - **Reglas nuevas:** `regla "..."` cuando la mesa acuerda una, indicando si es retroactiva.
 
-   `turno` devuelve **avisos ⚠** (falta la acción de alguien, un enemigo en 0 sigue en escena, una habilidad sin recargar): atiéndelos antes de responder. Cualquier comando suelto también sirve (CLI, o MCP `comando`), y `bin/mesa revisar` repite los avisos.
+   `turno` devuelve **avisos ⚠** (falta la acción de alguien, un enemigo en 0 sigue en escena, una habilidad sin recargar, alguien sin casilla en el mapa, turnos sin hechos clave): atiéndelos antes de responder. Si hay mapa de zona, `turno` lo imprime con las distancias: úsalas en el ESTADO. Cualquier comando suelto también sirve (CLI, o MCP `comando`), y `bin/mesa revisar` repite los avisos.
 5. **Responde** con el formato de la biblia, normalmente ESCENA / RESULTADO / ESTADO / DECISIÓN, de 150 a 300 palabras. En la DECISIÓN van:
    - una línea por personaje con lo que tiene a mano (la da `turno`; también `estado --breve`);
    - dos o tres ideas y «o cualquier otra acción»;
@@ -69,8 +72,15 @@ cómo arranca cada harness, en `guias/harnesses.md`.
 - **Los jugadores miran la misma pantalla que tú.** Para que los secretos no queden a la vista:
   - Lee `director.md` con la herramienta de lectura de archivos de tu harness, que no vuelca el contenido en el chat. Nunca con `cat` ni con nada que lo imprima en la terminal. Si tu harness no tiene esa herramienta, avisa antes en una línea: «Notas del director: no miren la pantalla un momento».
   - Escribe en `director.md` en las pausas naturales (fin de escena, al pausar) y avisa antes con esa misma línea, porque el cambio se ve en la terminal.
-  - Nada secreto en lo que es público: `partida.json`, los resúmenes de `turno`, las `nota` y los documentos se ven en el visor.
+  - Nada secreto en lo que es público: `partida.json`, los resúmenes de `turno`, las `nota`, los documentos, los hechos clave y los mapas se ven en el visor.
 - Al decidir un secreto, respeta lo ya jugado: la bitácora (`eventos.jsonl`) y las pistas mandan.
+
+## Memoria de la historia
+
+- La sección **Memoria de la historia** que trae `retomar` es **canon**: si choca con lo que recuerdas de la conversación, manda la memoria. Gracias a ella el contexto no crece con la historia y una sesión nueva del harness no pierde nada.
+- **Tú propones, el jugador corrige.** Al cerrar cada escena (con `escena nueva --cierre`) y cuando `turno` avise que van varios turnos sin hechos, anota de 1 a 3 hechos clave: nombres, promesas, deudas, objetos, lo que cambió. El jugador los edita, fija o archiva en el visor (pestaña Hechos): sus correcciones mandan.
+- Si `turno` avisa que hay hechos fuera del presupuesto, fusiona los parecidos o archiva los que ya no pesan. Actualiza «Hasta ahora» cuando la historia dé un giro.
+- Es pública: lo que los personajes no saben sigue en `director.md`. Detalle en `guias/director.md` § 14 y § 15.
 
 ## Documentos del mundo
 

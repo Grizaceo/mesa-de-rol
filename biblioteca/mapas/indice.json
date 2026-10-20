@@ -1,0 +1,123 @@
+[
+  {
+    "id": "posada-grifo-dorado",
+    "nombre": "Posada El Grifo Dorado",
+    "ambito": "zona",
+    "formato": "dd2vtt",
+    "archivo": "posada-grifo-dorado.dd2vtt",
+    "dimensiones": "14×10",
+    "etiquetas": [
+      "taberna",
+      "posada",
+      "interior",
+      "chimenea",
+      "mesas",
+      "dd2vtt"
+    ],
+    "descripcion": "Salón de posada con barra, mesas, chimenea encendida, trastienda con barriles y escalera al piso superior (con imagen de fondo y luces UVTT).",
+    "licencia": "CC0-1.0",
+    "fuente": "biblioteca/mapas (formato Universal VTT .dd2vtt)",
+    "autor": "mesa-de-rol"
+  },
+  {
+    "id": "puente-de-los-votos",
+    "nombre": "Puente de los Votos",
+    "ambito": "zona",
+    "formato": "dd2vtt",
+    "archivo": "puente-de-los-votos.dd2vtt",
+    "dimensiones": "14×7",
+    "etiquetas": [
+      "puente",
+      "rio",
+      "exterior",
+      "escribano",
+      "valdris",
+      "dd2vtt"
+    ],
+    "descripcion": "Puente de piedra sobre el río Lis con parapetos, ventanales, mesa de escribana y salida norte vigilada (con imagen de fondo UVTT).",
+    "licencia": "CC0-1.0",
+    "fuente": "biblioteca/mapas (formato Universal VTT .dd2vtt)",
+    "autor": "mesa-de-rol"
+  },
+  {
+    "id": "emboscada-del-camino",
+    "nombre": "Emboscada del Camino Real",
+    "ambito": "zona",
+    "formato": "dd2vtt",
+    "archivo": "emboscada-del-camino.dd2vtt",
+    "dimensiones": "14×9",
+    "etiquetas": [
+      "bosque",
+      "camino",
+      "emboscada",
+      "exterior",
+      "arroyo",
+      "carro",
+      "dd2vtt"
+    ],
+    "descripcion": "Camino forestal flanqueado por maleza, peñascos y árboles gruesos, con un arroyo y un carro volcado en el centro (con imagen de fondo UVTT).",
+    "licencia": "CC0-1.0",
+    "fuente": "biblioteca/mapas (formato Universal VTT .dd2vtt)",
+    "autor": "mesa-de-rol"
+  },
+  {
+    "id": "cripta-del-pacto",
+    "nombre": "Cripta del Pacto Antiguo",
+    "ambito": "zona",
+    "formato": "watabou-json",
+    "archivo": "cripta-del-pacto.json",
+    "dimensiones": "16×13",
+    "etiquetas": [
+      "mazmorra",
+      "cripta",
+      "altar",
+      "columnas",
+      "agua",
+      "watabou"
+    ],
+    "descripcion": "Mazmorra de tres cámaras con escalinata de entrada, cámara lateral inundada, reja de hierro y rotonda con columnas y altar.",
+    "licencia": "CC0-1.0",
+    "fuente": "biblioteca/mapas (esquema Watabou One Page Dungeon JSON)",
+    "autor": "mesa-de-rol"
+  },
+  {
+    "id": "torre-de-guardia",
+    "nombre": "Torre de Guardia Fronteriza",
+    "ambito": "zona",
+    "formato": "watabou-json",
+    "archivo": "torre-de-guardia.json",
+    "dimensiones": "16×9",
+    "etiquetas": [
+      "castillo",
+      "torre",
+      "fortaleza",
+      "guardia",
+      "patio",
+      "watabou"
+    ],
+    "descripcion": "Puesto fortificado con patio de armas, reja interior y torreón circular con escalera de caracol.",
+    "licencia": "CC0-1.0",
+    "fuente": "biblioteca/mapas (esquema Watabou One Page Dungeon JSON)",
+    "autor": "mesa-de-rol"
+  },
+  {
+    "id": "valle-de-valdris",
+    "nombre": "Reino de Aethermark · Valle de Valdris",
+    "ambito": "mundo",
+    "formato": "azgaar-json",
+    "archivo": "valle-de-valdris.json",
+    "dimensiones": "comarca + pueblo anidado",
+    "etiquetas": [
+      "mundo",
+      "comarca",
+      "valdris",
+      "aethermark",
+      "bosque",
+      "rio"
+    ],
+    "descripcion": "Mapa regional con 3 biomas (Bosque de los Contratos, Llanuras de Aethermark, Montes del Sello), el río Lis, rutas y el mapa interior de Valdris.",
+    "licencia": "CC0-1.0",
+    "fuente": "biblioteca/mapas (compatible con Azgaar/GeoJSON)",
+    "autor": "mesa-de-rol"
+  }
+]

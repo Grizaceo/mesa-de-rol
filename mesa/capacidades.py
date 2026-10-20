@@ -10,6 +10,7 @@ vez para que el comando directo y los cambios anidados de `turno` no divergan.
 from __future__ import annotations
 
 import argparse
+import os
 
 from . import imagenes
 
@@ -24,6 +25,7 @@ DE_JUEGO = frozenset({
     "vida", "condicion", "habilidad", "vendaje", "descanso", "enemigo", "nivel",
     "escena", "pnj", "pista", "documento", "trama", "misterio", "recurso", "reloj",
     "turno", "regla", "nota", "imagen", "guardar", "retro", "leccion",
+    "hecho", "memoria", "mapa", "mundo",
 })
 
 # Campo del parseo → motivo: lee o publica archivos de fuera de la partida.
@@ -34,6 +36,12 @@ SUBACCIONES = {
     "imagen": {
         "generar": "gasta crédito de un proveedor externo",
         "biblioteca-agregar": "importa un archivo a la biblioteca",
+    },
+    "mapa": {
+        "importar": "importa un archivo de fuera de la partida (usa `mapa cargar <id>` para el catálogo curado)",
+    },
+    "mundo": {
+        "importar": "importa un archivo de fuera de la partida (usa `mapa cargar <id>` para el catálogo curado)",
     },
 }
 
@@ -47,6 +55,12 @@ def revisar(args: argparse.Namespace, perfil: str = CLI) -> str | None:
     if perfil != JUEGO:
         return None
     comando = getattr(args, "comando", "")
+    # Un MCP lanzado para una partida concreta (el chat del visor pone MESA_PARTIDA) no toca otra.
+    fija = os.environ.get("MESA_PARTIDA")
+    if fija and getattr(args, "partida", None) not in (None, "", fija):
+        return f"este MCP es de la partida `{fija}`: no puede actuar sobre `{args.partida}`"
+    if fija and comando in ("usar", "nueva"):
+        return f"este MCP es de la partida `{fija}`: `{comando}` cambiaría de partida"
     if comando not in DE_JUEGO:
         return (
             f"`{comando}` no es una acción de juego: la administración del repo, el harness "

@@ -3,8 +3,8 @@
 | Guía | Para quién | Qué contiene |
 |---|---|---|
 | [`../reglas/d20-simple.md`](../reglas/d20-simple.md) | Todos | **El reglamento**, la referencia que manda |
-| [`jugadores.md`](jugadores.md) | Jugadores | Cómo declarar, los dados, la ficha y el visor |
-| [`director.md`](director.md) | Director | El ciclo, cuándo tirar, fallar hacia adelante, críticos, PNJ, secretos y formato |
+| [`jugadores.md`](jugadores.md) | Jugadores | Cómo declarar, los dados, la ficha y el visor (mapas y memoria editable) |
+| [`director.md`](director.md) | Director | El ciclo, cuándo tirar, fallar hacia adelante, críticos, PNJ, secretos, formato, memoria de la historia y mapas |
 | [`sesion-cero.md`](sesion-cero.md) | Todos | Qué acordar antes de una historia nueva |
 | [`habilidades.md`](habilidades.md) | Todos | Las 18 habilidades de D&D traducidas a los cuatro atributos |
 | [`combate.md`](combate.md) | Director | La ronda, ataques, daño, maniobras, 0 de vida y diseño de encuentros |

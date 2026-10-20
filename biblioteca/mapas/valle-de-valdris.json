@@ -1,0 +1,228 @@
+{
+  "nombre": "Reino de Aethermark · Valle de Valdris",
+  "unidad": "km",
+  "meta": {
+    "licencia": "CC0-1.0 (Dominio Público)",
+    "fuente": "Mapa regional pre-hecho compatible con Azgaar/GeoJSON",
+    "autor": "mesa-de-rol"
+  },
+  "regiones": [
+    {
+      "nombre": "Bosque de los Contratos",
+      "bioma": "bosque",
+      "puntos": [
+        [
+          -14,
+          14
+        ],
+        [
+          16,
+          18
+        ],
+        [
+          22,
+          -4
+        ],
+        [
+          -10,
+          -8
+        ]
+      ],
+      "nota": "Robles centenarios y ruinas de escribanos antiguos"
+    },
+    {
+      "nombre": "Llanuras de Aethermark",
+      "bioma": "llanura",
+      "puntos": [
+        [
+          18,
+          28
+        ],
+        [
+          52,
+          36
+        ],
+        [
+          56,
+          6
+        ],
+        [
+          22,
+          0
+        ]
+      ],
+      "nota": "Tierras de cultivo y caminos reales hacia la capital"
+    },
+    {
+      "nombre": "Montes del Sello",
+      "bioma": "montana",
+      "puntos": [
+        [
+          -28,
+          26
+        ],
+        [
+          -8,
+          30
+        ],
+        [
+          -6,
+          10
+        ],
+        [
+          -26,
+          8
+        ]
+      ],
+      "nota": "Cumbres ricas en hierro y piedra de sello"
+    }
+  ],
+  "trazos": [
+    {
+      "nombre": "Río Lis",
+      "tipo": "rio",
+      "puntos": [
+        [
+          -22,
+          18
+        ],
+        [
+          -8,
+          6
+        ],
+        [
+          0,
+          0
+        ],
+        [
+          18,
+          -8
+        ],
+        [
+          38,
+          -16
+        ]
+      ]
+    }
+  ],
+  "lugares": [
+    {
+      "nombre": "Valdris",
+      "tipo": "pueblo",
+      "x": 0.0,
+      "y": 0.0,
+      "visitado": true,
+      "nota": "Pueblo fronterizo; herrerías y contratos"
+    },
+    {
+      "nombre": "Aethermark (capital)",
+      "tipo": "capital",
+      "x": 42.0,
+      "y": 28.0,
+      "nota": "Sede de los Altos Tribunales"
+    },
+    {
+      "nombre": "Fuerte del Sello",
+      "tipo": "castillo",
+      "x": -16.0,
+      "y": 14.0,
+      "nota": "Guarnición de montaña"
+    },
+    {
+      "nombre": "Vado de las Carretas",
+      "tipo": "aldea",
+      "x": 15.0,
+      "y": 8.0,
+      "nota": "Posada de posta en el Camino Real"
+    },
+    {
+      "nombre": "Puente de los Votos",
+      "tipo": "edificio",
+      "x": -0.6,
+      "y": 0.3,
+      "en": "Valdris",
+      "visitado": true,
+      "nota": "Cruza el río Lis; puesto de Sabel"
+    },
+    {
+      "nombre": "Casa de la Causa",
+      "tipo": "edificio",
+      "x": 1.2,
+      "y": 0.8,
+      "en": "Valdris",
+      "nota": "Sede del Gremio en Valdris"
+    },
+    {
+      "nombre": "Posada El Grifo Dorado",
+      "tipo": "edificio",
+      "x": -0.2,
+      "y": -0.5,
+      "en": "Valdris",
+      "visitado": true,
+      "nota": "Posada de Marta Grifo"
+    }
+  ],
+  "rutas": [
+    {
+      "de": "Valdris",
+      "a": "Vado de las Carretas",
+      "tipo": "camino",
+      "puntos": [
+        [
+          0,
+          0
+        ],
+        [
+          8,
+          3
+        ],
+        [
+          15,
+          8
+        ]
+      ],
+      "ritmo": "normal"
+    },
+    {
+      "de": "Vado de las Carretas",
+      "a": "Aethermark (capital)",
+      "tipo": "camino",
+      "puntos": [
+        [
+          15,
+          8
+        ],
+        [
+          28,
+          19
+        ],
+        [
+          42,
+          28
+        ]
+      ],
+      "ritmo": "normal"
+    },
+    {
+      "de": "Valdris",
+      "a": "Fuerte del Sello",
+      "tipo": "sendero",
+      "puntos": [
+        [
+          0,
+          0
+        ],
+        [
+          -9,
+          7
+        ],
+        [
+          -16,
+          14
+        ]
+      ],
+      "ritmo": "lento"
+    }
+  ],
+  "actual": "Puente de los Votos"
+}

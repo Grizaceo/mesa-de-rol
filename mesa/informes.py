@@ -6,7 +6,7 @@ import os
 from collections import Counter
 from datetime import datetime
 
-from . import esquemas, estado, lecciones
+from . import esquemas, estado, lecciones, mapas, memoria
 from .texto import con_signo, norm
 
 CLASES_DOCUMENTO = ("carta", "telegrama", "periodico", "nota", "cartel", "informe", "otro")
@@ -80,8 +80,11 @@ def ficha_breve(p: dict) -> str:
     return " · ".join(partes)
 
 
-def revisar(datos: dict, acciones: dict | None = None) -> list[str]:
-    """Avisos de consistencia: lo que el narrador suele olvidar. Avisan, nunca bloquean."""
+def revisar(datos: dict, acciones: dict | None = None, eventos: list[dict] | None = None) -> list[str]:
+    """Avisos de consistencia: lo que el narrador suele olvidar. Avisan, nunca bloquean.
+
+    Con `eventos` (la bitácora), también los de la memoria: turnos sin hechos clave nuevos.
+    """
     avisos = []
     personajes = datos.get("personajes", [])
     if acciones is not None:
@@ -99,15 +102,20 @@ def revisar(datos: dict, acciones: dict | None = None) -> list[str]:
             for h in p.get("habilidades", []):
                 if h.get("recarga") == "combate" and h.get("disponible") is False:
                     avisos.append(f"«{h['nombre']}» de {p['nombre']} sigue gastada sin amenazas en pie: si el combate terminó, `enemigo limpiar` la recarga.")
-    posiciones = {norm(x.get("quien", "")) for x in datos.get("escena", {}).get("posiciones") or []}
+    escena = datos.get("escena", {})
+    posiciones = {norm(x.get("quien", "")) for x in escena.get("posiciones") or []}
     if posiciones:
         for p in personajes:
             if not {norm(p.get("nombre", "")), norm(p.get("id", ""))} & posiciones:
                 avisos.append(f"{p['nombre']} no tiene posición en la escena: `escena posicion {p['nombre']} \"<dónde, con metros>\"`.")
+    if escena.get("mapa"):
+        for x in escena.get("posiciones") or []:
+            if not x.get("celda"):
+                avisos.append(f"{x['quien']} no tiene casilla en el mapa de zona: `escena posicion {x['quien']} \"{x.get('donde', '')}\" --celda C4`.")
     narrador = os.environ.get("MESA_NARRADOR") or (datos.get("sesion") or {}).get("narrador")
     if not narrador or narrador == "sin identificar":
         avisos.append('No hay narrador identificado: `bin/mesa retomar --narrador "<harness>/<modelo>"`.')
-    return avisos
+    return avisos + memoria.avisos(datos, eventos)
 
 
 def documento_chat(doc: dict) -> str:
@@ -127,6 +135,9 @@ def anteriormente(slug: str, n: int = 3) -> str:
         return ""
     primero = len(turnos) - len(turnos[-n:]) + 1
     lineas = ["## Anteriormente (borrador: ábrelo con tu voz, en 4 líneas como máximo)"]
+    hasta_ahora = memoria.leer(estado.cargar(slug)).get("hasta_ahora")
+    if hasta_ahora:
+        lineas.append(f"- Hasta ahora: {hasta_ahora}")
     lineas += [f"- Turno {i}: {e.get('resumen', '')}" for i, e in enumerate(turnos[-n:], start=primero)]
     return "\n".join(lineas) + "\n"
 
@@ -143,7 +154,12 @@ def resumen(datos: dict) -> str:
     if escena.get("descripcion"):
         lineas.append(f"> {escena['descripcion']}")
     if escena.get("posiciones"):
-        lineas.append("Posiciones: " + "; ".join(f"{x['quien']}: {x['donde']}" for x in escena["posiciones"]))
+        lineas.append("Posiciones: " + "; ".join(
+            f"{x['quien']}: {x['donde']}" + (f" [{x['celda']}]" if x.get("celda") else "") for x in escena["posiciones"]
+        ))
+    for titulo, texto in (("Zona", mapas.zona_texto(datos)), ("Mundo", mapas.mundo_texto(datos))):
+        if texto:
+            lineas += ["", f"## {titulo}", texto]
     lineas += ["", "## Personajes"]
     version = esquemas.version_de(datos)
     for p in datos.get("personajes", []):
@@ -185,6 +201,13 @@ def _linea_evento(e: dict) -> str:
         return f"[{e['seq']}] TURNO — {acciones} ⇒ {e.get('resumen', '')}"
     if t in ("tirada", "dano"):
         return f"[{e['seq']}] {t} {e.get('expr', '')} = {e.get('total', e.get('final', ''))} {e.get('etiqueta', '')}"
+    # La memoria va entera en su sección del contexto: aquí basta qué cambió, sin repetir el texto
+    # (y un hecho archivado no vuelve a entrar al contexto por la bitácora).
+    if t == "hecho":
+        return f"[{e['seq']}] hecho {e.get('accion')} {e.get('id')} ({e.get('autor', '?')})"
+    if t == "memoria":
+        numero = f" {e['numero']}" if e.get("numero") else ""
+        return f"[{e['seq']}] memoria {e.get('accion')}{numero} ({e.get('autor', '?')})"
     return f"[{e['seq']}] {t}: " + ", ".join(f"{k}={v}" for k, v in e.items() if k not in ("seq", "ts", "tipo"))[:200]
 
 
@@ -217,7 +240,7 @@ def contexto(slug: str, completo: bool = False, n_eventos: int = 15) -> str:
         "## Reglas de la casa vigentes",
     ]
     partes += [f"- **{r['id']}**: {r['texto']}" for r in datos.get("reglas_casa", [])] or ["- (ninguna)"]
-    partes += ["", resumen(datos), "## Últimos eventos"]
+    partes += ["", memoria.markdown(datos), resumen(datos), "## Últimos eventos"]
     partes += [_linea_evento(e) for e in estado.leer_eventos(slug, limite=n_eventos)] or ["(sin eventos)"]
     if completo:
         if (base / "biblia.md").exists():
@@ -239,6 +262,7 @@ def guardado(slug: str) -> tuple[str, str]:
         f"# Partida guardada — {datos.get('titulo')}\n"
         f"_{datetime.now().strftime('%Y-%m-%d %H:%M')} · versión de estado {datos.get('version')}_\n\n"
         + resumen(datos)
+        + "\n" + memoria.markdown(datos)
         + ("\n## Decisiones recientes\n" + "\n".join(decisiones) + "\n" if decisiones else "")
         + "\n## Reglas de la casa\n"
         + "\n".join(f"- {r['id']}: {r['texto']}" for r in datos.get("reglas_casa", []))

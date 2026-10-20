@@ -24,7 +24,9 @@ Las secciones del SRD se citan por su nombre en inglés para poder buscarlas en 
 | Acciones: atacar, correr, destrabarse, esquivar, ayudar, esconderse, influir, preparar, buscar, estudiar, usar | *Actions* y glosario | **Igual**, sin *Magic*. Se añade *Proteger* [mesa] |
 | Esconderse: Agilidad (Sigilo) CD 15; el total es la CD para encontrarte | *Hide [Action]* | **Igual** (la condición *Invisible* se llama aquí *Oculto*) |
 | Actitudes y CD 15 de influencia | *Social Interaction*, *Influence [Action]*, *Friendly*, *Hostile* | **Igual** (CD 15 fija; el SRD usa «15 o la Inteligencia del objetivo») |
-| Defensa (CA) y cobertura +2/+5 | *Armor Class*, *Cover* | **Igual** en cobertura. Defensa base 12 [mesa] |
+| Defensa (CA) y cobertura +2/+5 (no acumulables; prevalece el mayor grado) | *Armor Class*, *Cover* (`srd-2024_combat_cover`) | **Igual** en cobertura. Defensa base 12 [mesa] |
+| Terreno difícil: cada casilla cuesta 1 extra (×2, sin acumularse) | *Movement and Position › Difficult Terrain* (`srd-2024_combat_movement-and-position`) | **Igual**, en casillas de 1,5 m |
+| Plantillas de área (cono, esfera/emanación/cilindro, línea, cubo) y bloqueo por cobertura total | *Rules Glossary › Area of Effect* | **Igual** sobre cuadrícula D&D (diagonal = 1) |
 | Desventaja al disparar con un enemigo adyacente; atacar sin ver | *Ranged Attacks in Close Combat*, *Unseen Attackers and Targets* | **Igual** |
 | Daño = dado del arma; protección resta con mínimo 1 | *Damage Rolls* (suma la característica) | **Desviación** [mesa]: no se suma el atributo; la protección es de la mesa |
 | Dados de armas d4–d12 | *Equipment › Weapons* (Dagger 1d4, Spear 1d6, Trident 1d8, Pistol 1d10, Musket 1d12) | **Equivalente** |

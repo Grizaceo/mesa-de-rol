@@ -6,7 +6,8 @@ responden. El repo pone alrededor del director todo lo que una buena mesa necesi
 - **Reglas d20 simples**, compatibles con D&D quinta edición (SRD 5.2.1) y pensadas para principiantes.
 - **Dados reales y registrados**: nada de tiradas inventadas.
 - **Estado persistente** de la partida: fichas, escena, PNJ, pistas, tramas, recursos y relojes.
-- **Un visor web** con los dados animados, las fichas, la escena con su imagen, el mundo y los documentos que encuentran los personajes.
+- **Un visor web para tener al lado del chat**: los dados animados, la ficha, el mapa de la zona en cuadrícula, el mapa del mundo, la ambientación, los documentos que encuentran los personajes y la memoria de la historia.
+- **Memoria que no crece con la conversación**: hechos clave, «Hasta ahora» y una línea por escena, dentro de un presupuesto. El narrador los propone y el jugador los corrige desde el visor; al retomar, eso reemplaza a releer todo el chat.
 - **Imágenes de ambiente opcionales**: tarjeta local, una imagen existente o una generada.
 - **Lecciones entre historias**: cada historia nueva arranca con lo aprendido en las anteriores.
 
@@ -42,6 +43,22 @@ Para ver la mesa en vivo:
 bin/mesa servir                # http://127.0.0.1:8765
 ```
 
+**Jugar desde el navegador, con el chat al centro** (como Friends & Fables): el visor habla con el
+narrador por ACP (Agent Client Protocol), el mismo protocolo que usan los editores, y la
+conversación ocurre en la página, con las tiradas y los cambios como tarjetas dentro del chat y la
+ficha, la memoria y los mapas a los lados.
+
+```bash
+bin/mesa servir --agente hermes              # Hermes, perfil `narrador`
+bin/mesa servir --agente devin               # o Devin (`devin acp`), gemini...
+bin/mesa servir --agente-cmd 'hermes -p otro acp'
+bin/mesa servir --agente hermes --tailscale  # además, escribir desde tu otro equipo vía `tailscale serve`
+```
+
+El agente sigue siendo el mismo, con este `AGENTS.md` y el MCP `mesa` de la partida; lo que piensa y lo
+que leen sus herramientas no se muestra. Sin `--agente`, el centro muestra la bitácora como conversación
+y se narra desde la terminal, como siempre. Ver [`guias/seguridad.md`](guias/seguridad.md).
+
 No hay que instalar nada: Python ≥ 3.10, sin dependencias. `bin/mesa` es la CLI. Si se prefiere
 instalarla, `uv tool install .` o `pip install -e .` dejan disponible el comando `mesa`.
 
@@ -67,7 +84,11 @@ desincronizó. El paquete nunca lleva partidas, lecciones ni bibliotecas persona
 | `mesa vida` / `condicion` / `habilidad` / `nivel` | Fichas |
 | `mesa vendaje <quien>` / `descanso corto\|largo` | Curarse y recargar habilidades |
 | `mesa enemigo agregar <nombre> --plantilla maton` | Amenazas en escena |
-| `mesa escena nueva\|editar\|posicion` | Escena actual y posiciones en metros |
+| `mesa escena nueva\|editar\|posicion [--celda C4] [--cierre "..."]` | Escena actual, posiciones en metros (y en casillas si hay mapa) y su línea de crónica al cerrarla |
+| `mesa mapa zona --dibujo "..." [--leyenda c=significado]` / `mapa ver` | Mapa de la zona en cuadrícula, dibujado en texto: el visor lo pinta y `turno` lo imprime con las distancias |
+| `mesa mundo lugar\|ruta\|aqui\|quitar\|ajustar\|ver` | Mapa del mundo: lugares conocidos con coordenadas, rutas y dónde están |
+| `mesa hecho agregar\|editar\|fijar\|soltar\|archivar\|restaurar\|listar` | Hechos clave de la memoria de la historia |
+| `mesa memoria hasta-ahora\|escena\|presupuesto\|ver` | «Hasta ahora», crónica de escenas y cuánto entra al contexto |
 | `mesa pnj` / `pista` / `trama` / `misterio` / `recurso` / `reloj` | El mundo |
 | `mesa documento agregar\|ver` | Documentos del mundo (cartas, telegramas, periódicos): bloque para el chat y pestaña en el visor |
 | `mesa turno --accion "Nombre=..." --resumen "..." [--cambio '...']` | El turno y sus cambios de estado en un solo paso (todos o ninguno), con avisos |
@@ -75,7 +96,7 @@ desincronizó. El paquete nunca lleva partidas, lecciones ni bibliotecas persona
 | `mesa imagen ninguna\|elegir\|buscar\|generar\|biblioteca-agregar` | Imagen de la escena |
 | `mesa guardar` | «Guardar partida»: resumen copiable más un archivo |
 | `mesa retro` / `leccion agregar\|listar\|retirar\|incorporar\|fase` | Retrospectiva y lecciones |
-| `mesa servir` | El visor |
+| `mesa servir [--agente hermes\|devin\|gemini] [--agente-cmd '...'] [--tailscale]` | El visor; con agente, el chat con el narrador por ACP |
 | `mesa harness lista\|sync\|verificar\|instrucciones <id>` | Adaptadores por harness y su comprobación |
 | `mesa recursos sync\|verificar` | Copia de los recursos que viaja en el paquete instalable |
 | `mesa fuentes listar\|buscar\|actualizar\|ver` | Catálogo externo con procedencia (Open5e, documento `srd-2024`): licencia, URL y fecha por entrada; la red solo en `buscar` y `actualizar` |
@@ -114,6 +135,7 @@ tests/             python3 -m unittest
 - **Agnóstico del harness.** El estado vive en el repo, el contrato en `AGENTS.md` y las herramientas son CLI y MCP con el mismo motor. Narrar desde otro agente es pausar y retomar.
 - **El director no inventa dados.** Usa `bin/mesa`, y la tirada queda en la bitácora y en el visor.
 - **Público y secreto están separados.** `partida.json` es lo que ven los jugadores; `director.md` no lo sirve el visor ni lo imprime la CLI, y el narrador lo lee con su herramienta de lectura de archivos, porque los jugadores miran la misma terminal.
+- **El contexto no crece con la historia.** El narrador retoma con la memoria (hechos clave dentro de un presupuesto, «Hasta ahora» y la crónica), el estado y los últimos eventos, no con toda la conversación; se puede abrir una sesión nueva del harness en cualquier escena. El visor solo escribe esa memoria, y solo desde este equipo (ver `guias/seguridad.md`).
 - **Afinar sin reentrenar.** Las lecciones son instrucciones con evidencia y alcance (`global`, `jugadores`, `reglas:…`, `ambientacion:…`) que se inyectan al director. Ver `guias/lecciones.md`.
 - **Imágenes opcionales y baratas por defecto.** Generar solo si se pide, porque gasta crédito y sale a la red. Ver `guias/imagenes.md`.
 
@@ -127,7 +149,6 @@ python3 -m unittest discover -s tests -v
 
 - Modo autónomo: un runner que llame a un modelo por API, para jugar desde Telegram o la web sin un agente de terminal (se puede apoyar en el mismo servidor MCP).
 - Narración por voz (TTS) de los bloques ESCENA.
-- Mapa de posiciones dibujado a partir de `escena.posiciones`.
 - Exportar la bitácora a un dataset de turnos, por si algún día se quiere reentrenar de verdad.
 
 ## Licencias

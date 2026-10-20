@@ -8,9 +8,10 @@
 </head>
 <body>
   <header class="barra">
+    <button id="abrir-izq" class="abrir-lado" type="button" aria-controls="lado-izq" aria-expanded="false">Ficha</button>
     <div class="barra-titulo">
-      <h1 id="titulo-partida">Mesa de rol</h1>
-      <p id="subtitulo" class="texto-2"></p>
+      <h1>Mesa de rol</h1>
+      <p class="franja-escena"><b id="nombre-historia"></b><span class="separador" aria-hidden="true"> · </span><span id="escena-numero" class="eyebrow"></span> <span id="titulo-escena"></span> <span id="escena-meta" class="texto-2"></span></p>
     </div>
     <div id="reloj" class="reloj"></div>
     <div class="barra-controles">
@@ -19,42 +20,92 @@
       <select id="selector-partida"></select>
       <button id="boton-tema" type="button" title="Cambiar tema">Tema: auto</button>
     </div>
+    <button id="abrir-der" class="abrir-lado" type="button" aria-controls="lado-der" aria-expanded="false">Mapa</button>
   </header>
 
-  <main class="tablero">
-    <section class="panel panel-escena" aria-labelledby="titulo-escena">
-      <figure class="escena-figura">
-        <div id="escena-imagen" class="escena-imagen"></div>
-        <figcaption id="escena-pie" class="texto-3"></figcaption>
-      </figure>
-      <div class="escena-texto">
-        <p id="escena-numero" class="eyebrow"></p>
-        <h2 id="titulo-escena"></h2>
-        <p id="escena-meta" class="texto-2"></p>
-        <p id="escena-descripcion" class="narracion"></p>
-        <ul id="posiciones" class="posiciones"></ul>
+  <div class="mesa">
+    <aside id="lado-izq" class="lado lado-izq" aria-label="Personaje y memoria">
+      <nav class="vistas" role="tablist" id="vistas-izq" aria-label="Personaje y memoria"></nav>
+
+      <section class="vista" id="v-ficha" role="tabpanel" aria-label="Ficha" hidden>
+        <div id="fichas" class="fichas"></div>
+        <div id="enemigos"></div>
+      </section>
+
+      <section class="vista" id="v-hechos" role="tabpanel" aria-label="Hechos clave" hidden>
+        <header class="memoria-cabeza">
+          <h2>Memoria de la historia</h2>
+          <p class="texto-3">Lo que el narrador no puede olvidar: lo lee al retomar, en vez de toda la conversación. Corrige, fija o archiva lo que haga falta.</p>
+          <div id="presupuesto" class="presupuesto"></div>
+        </header>
+        <div id="hasta-ahora" class="hasta-ahora"></div>
+        <h3 class="subtitulo-panel">Hechos clave</h3>
+        <form id="nuevo-hecho" class="nuevo-hecho" hidden>
+          <label class="oculto-visual" for="nuevo-texto">Hecho nuevo</label>
+          <textarea id="nuevo-texto" rows="2" maxlength="500" placeholder="Un hecho que no debe olvidarse: un nombre, una promesa, un objeto, lo que cambió…" required></textarea>
+          <div class="nuevo-hecho-pie">
+            <label for="nuevo-categoria" class="oculto-visual">Categoría</label>
+            <select id="nuevo-categoria"></select>
+            <label class="marcar" title="Entra siempre al contexto del narrador"><input type="checkbox" id="nuevo-fijar"> Fijar</label>
+            <button type="submit">Agregar</button>
+          </div>
+        </form>
+        <p id="memoria-aviso" class="memoria-aviso" aria-live="polite"></p>
+        <div id="lista-hechos"></div>
+        <h3 class="subtitulo-panel">Crónica de escenas</h3>
+        <div id="cronica"></div>
+      </section>
+
+      <section class="vista" id="v-registro" role="tabpanel" aria-label="Registro" hidden>
+        <div class="pestanas" role="tablist" id="pestanas"></div>
+        <div id="mundo" class="mundo" role="tabpanel"></div>
+      </section>
+    </aside>
+
+    <main class="centro" aria-label="Chat de la partida">
+      <div id="chat" class="chat">
+        <div id="chat-historial"></div>
+        <div id="chat-vivo" aria-live="polite"></div>
       </div>
-    </section>
+      <form id="composer" class="composer">
+        <p id="composer-aviso" class="composer-aviso texto-3" hidden></p>
+        <div class="composer-fila">
+          <label class="oculto-visual" for="mensaje">Tu acción</label>
+          <textarea id="mensaje" rows="2" maxlength="4000" placeholder="¿Qué hace tu personaje? (Enter envía · Mayús+Enter, salto de línea)"></textarea>
+          <div class="composer-botones">
+            <button type="submit" id="enviar" class="principal">Enviar</button>
+            <button type="button" id="detener" hidden>Detener</button>
+          </div>
+        </div>
+        <div class="composer-pie">
+          <span id="estado-narrador" class="texto-3" aria-live="polite"></span>
+          <button type="button" id="sesion-nueva" class="enlace" hidden title="El narrador empieza una sesión nueva y retoma desde la memoria de la historia">Sesión nueva del narrador</button>
+        </div>
+      </form>
+    </main>
 
-    <section class="panel panel-dados" aria-labelledby="titulo-dados">
-      <h2 id="titulo-dados">Dados</h2>
-      <div id="bandeja" class="bandeja" aria-live="polite"><p class="texto-3">Aún no hay tiradas.</p></div>
-      <h3 class="subtitulo-panel">Historial</h3>
-      <ol id="historial" class="historial"></ol>
-    </section>
+    <aside id="lado-der" class="lado lado-der" aria-label="Mapas y ambientación">
+      <nav class="vistas" role="tablist" id="vistas-der" aria-label="Mapas y ambientación"></nav>
 
-    <section class="panel panel-personajes" aria-labelledby="titulo-personajes">
-      <h2 id="titulo-personajes">Personajes</h2>
-      <div id="fichas" class="fichas"></div>
-      <div id="enemigos"></div>
-    </section>
+      <section class="vista" id="v-zona" role="tabpanel" aria-label="Zona" hidden></section>
 
-    <section class="panel panel-mundo" aria-labelledby="titulo-mundo">
-      <h2 id="titulo-mundo">El mundo</h2>
-      <div class="pestanas" role="tablist" id="pestanas"></div>
-      <div id="mundo" class="mundo" role="tabpanel"></div>
-    </section>
-  </main>
+      <section class="vista" id="v-mundo" role="tabpanel" aria-label="Mundo" hidden>
+        <div class="mapa-mundo">
+          <div class="mapa-controles" role="group" aria-label="Zoom del mapa">
+            <button type="button" data-zoom="mas" title="Acercar">+</button>
+            <button type="button" data-zoom="menos" title="Alejar">−</button>
+            <button type="button" data-zoom="centrar" title="Ver todo">Centrar</button>
+          </div>
+          <svg id="svg-mundo" role="img" aria-label="Mapa del mundo"></svg>
+        </div>
+        <p id="info-lugar" class="regla" aria-live="polite"></p>
+        <div id="mundo-texto"></div>
+      </section>
+
+      <section class="vista" id="v-ambiente" role="tabpanel" aria-label="Ambientación" hidden></section>
+    </aside>
+  </div>
+  <div id="velo" class="velo" hidden></div>
 
   <script type="module" src="/visor/app.js"></script>
 </body>

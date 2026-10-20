@@ -5,8 +5,9 @@ las acciones de mesa, los mismos efectos; lo que cambia es la autoridad.
 
 | Superficie | Puede |
 |---|---|
-| **MCP de juego** (`bin/mesa-mcp`) | Todo lo de jugar: `retomar`, `contexto`, `estado`, tiradas, ataques, vida, condiciones, escena, mundo, `turno`, `pausar`, `imagen ninguna`/`buscar`/`elegir` por id de biblioteca, `guardar`, `retro`, `leccion`. |
+| **MCP de juego** (`bin/mesa-mcp`) | Todo lo de jugar: `retomar`, `contexto`, `estado`, tiradas, ataques, vida, condiciones, escena, mundo, memoria (`hecho`, `memoria`), mapas (`mapa`, `mundo`), `turno`, `pausar`, `imagen ninguna`/`buscar`/`elegir` por id de biblioteca, `guardar`, `retro`, `leccion`. |
 | **CLI deliberada** (`bin/mesa ...`, la que teclea una persona) | Lo anterior **y** la administración e importaciones: `harness` (instalar la skill, regenerar adaptadores, verificar), `servir`, `documento agregar --archivo`, `imagen generar`, `imagen biblioteca-agregar`, rutas o URLs en `imagen elegir`, y el catálogo externo (`fuentes buscar` y `fuentes actualizar` salen a la red). |
+| **Visor** (el navegador, `bin/mesa servir`) | Leer lo público (`partida.json`, bitácora, chat, imágenes), **escribir la memoria** (hechos clave, «Hasta ahora», crónica: `POST /api/memoria`, con el mismo motor que `hecho`/`memoria`) y, si se arrancó con `--agente`, **hablar con el narrador** (`POST /api/chat`, `/cancelar`, `/sesion-nueva`, `/permiso`). Fichas, dados, escena y mapas los cambia solo el narrador, con sus herramientas. |
 
 La política vive en `mesa/capacidades.py` y se aplica dos veces: al parsear el comando y,
 con el mismo examen, a cada cambio anidado de `turno --cambio`. No basta bloquear el primer
@@ -27,6 +28,47 @@ archivos de fuera de la partida, no una ruta concreta.
 - `fuentes buscar` y `fuentes actualizar` salen a la red y copian datos de un servicio
   externo a `biblioteca/fuentes/`; el motor lee esa caché local y nunca consulta por su
   cuenta. Cada entrada guarda licencia, URL y fecha (ver [`fuente-srd.md`](fuente-srd.md)).
+
+## La escritura del visor
+
+El jugador corrige la memoria desde el navegador, así que el servidor del visor dejó de ser
+solo lectura en ese único punto. La petición se acepta solo si:
+
+- viene de este equipo (dirección de loopback) y con `Host` local (`127.0.0.1`, `localhost`,
+  `[::1]`), lo que corta el DNS rebinding; con `servir --host 0.0.0.0` los demás equipos leen,
+  pero no escriben;
+- trae el token de esa ejecución del servidor (`X-Mesa-Token`, que `GET /api/visor` entrega solo
+  con `Host` local; no se guarda en disco ni en la bitácora) y, si el navegador manda `Origin`,
+  es de este equipo (en cualquier puerto, porque un proxy local, como la vista previa de un
+  harness, lo cambia);
+- el cuerpo es JSON de menos de 16 KiB, lo que obliga a una consulta CORS previa que el servidor
+  no responde: una página ajena no puede enviarla.
+
+Cada cambio pasa por el candado de la partida y deja un evento con `autor: jugador` y `via: visor`.
+Los textos se validan como en la CLI (vacío, duplicado, largo máximo) y el visor los escapa al
+pintarlos.
+
+**Por Tailscale** (`servir --tailscale`): también escribe quien llega por `tailscale serve` con
+`Host` del propio nodo (`<equipo>.<tailnet>.ts.net`) y la cabecera `Tailscale-User-Login` de un
+usuario autorizado (por defecto, el dueño del nodo; o los de `--tailscale-usuario`). Esa cabecera la
+pone tailscaled, que atiende la conexión y la pasa desde 127.0.0.1; un cliente de fuera no puede
+fabricarla. Los demás usuarios de la tailnet leen, pero no escriben.
+
+## El chat con el narrador
+
+Escribir en el chat pone a trabajar a un agente con acceso al equipo, así que:
+
+- **El agente recibe solo el MCP `mesa` de esa partida**, por ACP, con `MESA_RAIZ` y `MESA_PARTIDA`;
+  ese MCP se niega a actuar sobre otra partida o a cambiar de partida. El perfil `narrador` de Hermes
+  no trae MCP propios: uno propio apuntaría a la raíz del repo y podría escribir en otra partida
+  (pasó una vez en pruebas; de ahí la regla).
+- **Permisos:** las herramientas de la mesa y la lectura pasan solas; editar archivos, solo dentro de
+  la carpeta de la partida (por ejemplo `director.md`); cualquier otra cosa (un comando, una escritura
+  fuera) espera en el chat a que el jugador la permita o la rechace (5 minutos, y si no, se rechaza).
+- **Secretos:** del agente se muestra solo su respuesta y un aviso genérico de lo que hace («consulta
+  sus notas»). Lo que piensa y lo que leen sus herramientas (por ejemplo `director.md`) no sale del
+  servidor ni queda en `chat.jsonl`.
+- La sesión del agente se guarda en `partidas/<slug>/.narrador.json`, que el visor no sirve.
 
 ## Contrato AGENTS.md
 

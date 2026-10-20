@@ -116,9 +116,10 @@ HERRAMIENTAS = [
                 "items": {"type": "array", "items": {"type": "string"}, "minItems": 1},
                 "description": (
                     "Cambios de estado como argumentos de la CLI, p. ej. [[\"pista\", \"Huellas frescas\", \"--fuente\", \"Ana\"], "
-                    "[\"pnj\", \"Anya\", \"--nota\", \"...\"], [\"escena\", \"posicion\", \"Crisljin\", \"en la popa, a 4 m\"]]. "
+                    "[\"pnj\", \"Anya\", \"--nota\", \"...\"], [\"escena\", \"posicion\", \"Crisljin\", \"en la popa, a 4 m\", \"--celda\", \"C4\"], "
+                    "[\"hecho\", \"agregar\", \"Anya le debe 30 rublos a Baránov\", \"--categoria\", \"promesa\"]]. "
                     "Valen: vida, condicion, habilidad, vendaje, descanso, enemigo, nivel, escena, pnj, pista, documento, trama, "
-                    "misterio, recurso, reloj, regla."
+                    "misterio, recurso, reloj, regla, hecho, memoria, mapa, mundo."
                 ),
             },
             "partida": _PARTIDA}},
@@ -136,8 +137,12 @@ HERRAMIENTAS = [
         "description": (
             "Cualquier otro comando de la CLI `mesa`, como lista de argumentos. Comandos: vida, condicion, habilidad, "
             "vendaje, descanso, enemigo, nivel, escena, pnj, pista, documento, trama, misterio, recurso, reloj, regla, "
-            "nota, revisar, imagen, guardar, retro, leccion, partidas, usar, nueva. Ejemplos: [\"vida\", \"Jualjin\", \"-3\"], "
-            "[\"escena\", \"posicion\", \"Crisljin\", \"en la popa, a 4 m\"], [\"pnj\", \"Anya\", \"--nota\", \"...\"]. "
+            "nota, revisar, imagen, guardar, retro, leccion, partidas, usar, nueva, hecho (memoria: agregar, editar, fijar, "
+            "archivar, listar), memoria (hasta-ahora, escena, ver), mapa (generar, zona --dibujo, terreno, luz, linea, area, quitar, ver) "
+            "y mundo (lugar, ruta, region, trazo, viaje, generar, aqui, quitar, ajustar, ver). "
+            "Ejemplos: [\"vida\", \"Jualjin\", \"-3\"], "
+            "[\"escena\", \"posicion\", \"Crisljin\", \"en la popa, a 4 m\"], [\"pnj\", \"Anya\", \"--nota\", \"...\"], "
+            "[\"mapa\", \"zona\", \"--dibujo\", \"#####\\n#..+#\\n#####\"]. "
             "No disponibles aquí por ser administración del repo o importación externa: harness, servir, "
             "documento --archivo, imagen generar, imagen biblioteca-agregar y las rutas o URLs de imagen elegir "
             "(desde aquí solo ids o archivos de la biblioteca curada). Esas van por la CLI, a mano."

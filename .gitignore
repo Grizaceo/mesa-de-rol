@@ -14,5 +14,7 @@ partidas/*/imagenes/*.webp
 partidas/*/.candado
 partidas/*/.transaccion.json*
 partidas/*/eventos.jsonl.tmp
+# La sesión del narrador del chat (ACP) es de esta máquina; la conversación (chat.jsonl) sí viaja.
+partidas/*/.narrador.json
 # La caché del catálogo externo se regenera con `bin/mesa fuentes actualizar`: no viaja en git.
 biblioteca/fuentes/
