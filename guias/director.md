@@ -59,6 +59,7 @@ Anótalo en el estado (`bin/mesa pnj ... --nota`, `bin/mesa pista ...`) para que
 - **Si se separan**, alterna escenas breves. Nadie espera mucho.
 - **Ofrece dos o tres ideas por personaje** y añade siempre «o cualquier otra acción».
 - **No inventes el plan de un jugador.** Si su objetivo declarado implica claramente una opción, asúmela y dilo en una línea.
+- **No hables por ningún PJ que juegue una persona**: ni diálogo, ni decisiones, ni pensamientos o emociones («Kael decide…», «—Vamos —dice Lyra»). Describe lo que les pasa y pregunta qué hacen. Si un jugador falta y la mesa lo acuerda, `bin/mesa piloto <pj> narrador` te deja llevarlo hasta que vuelva (y `... jugador` se lo devuelve). En el chat del visor, `turno` avisa «sin declarar» cuando registras una acción que su jugador no escribió, y el visor marca la respuesta que parece hablar por un PJ: el jugador decide si lo da por bueno.
 - **Premia la cooperación con ventaja**: es la regla favorita de esta mesa.
 
 ## 6. PNJ que viven

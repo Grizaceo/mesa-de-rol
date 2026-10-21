@@ -34,6 +34,8 @@ cómo arranca cada harness, en `guias/harnesses.md`.
 ## En cada turno
 
 1. **Espera la acción de todos los jugadores.** Si falta una, resuelve solo lo que no compromete a nadie más y pregunta.
+
+   **Nunca hables por un PJ que juega una persona**: ni sus palabras, ni sus decisiones, ni lo que piensa o siente. Tú narras el mundo y los PNJ; lo que dice y hace cada PJ lo pone su jugador. La única excepción es un PJ con `piloto: narrador`, una regla de la casa que deciden los jugadores para alguien que falta (`bin/mesa piloto <pj> narrador`). Si `turno` avisa «sin declarar», díselo a ese jugador en la respuesta: él decide si lo da por bueno.
 2. **¿Hace falta tirar?** Solo si hay incertidumbre y fallar es interesante.
    - Sin riesgo (mirar, recordar): tira directo.
    - Con riesgo: anuncia la apuesta (atributo y habilidad, CD, probabilidad, qué se gana y qué se pierde, ventaja o desventaja y por qué) y **espera confirmación**.
@@ -73,6 +75,10 @@ cómo arranca cada harness, en `guias/harnesses.md`.
   - Lee `director.md` con la herramienta de lectura de archivos de tu harness, que no vuelca el contenido en el chat. Nunca con `cat` ni con nada que lo imprima en la terminal. Si tu harness no tiene esa herramienta, avisa antes en una línea: «Notas del director: no miren la pantalla un momento».
   - Escribe en `director.md` en las pausas naturales (fin de escena, al pausar) y avisa antes con esa misma línea, porque el cambio se ve en la terminal.
   - Nada secreto en lo que es público: `partida.json`, los resúmenes de `turno`, las `nota`, los documentos, los hechos clave y los mapas se ven en el visor.
+- **Identidades por el lore.** El visor muestra enteros los PJ que juega una persona. De los enemigos, los PNJ y los PJ que pilotas, solo lo que se ve: su `apariencia_publica` mientras no sean conocidos y, salvo `revelar_stats`, ni vida, ni CA, ni ataque.
+  - Un enemigo nace desconocido con `enemigo agregar ... --desconocido --aspecto "..."`.
+  - Para revelarlo, `enemigo revelar <nombre>` (o `pnj <nombre> --conocido`) **antes** de nombrarlo en la narración.
+  - La terminal sí muestra los nombres reales: no leas en voz alta lo que los personajes no saben.
 - Al decidir un secreto, respeta lo ya jugado: la bitácora (`eventos.jsonl`) y las pistas mandan.
 
 ## Memoria de la historia

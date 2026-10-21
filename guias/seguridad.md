@@ -7,7 +7,7 @@ las acciones de mesa, los mismos efectos; lo que cambia es la autoridad.
 |---|---|
 | **MCP de juego** (`bin/mesa-mcp`) | Todo lo de jugar: `retomar`, `contexto`, `estado`, tiradas, ataques, vida, condiciones, escena, mundo, memoria (`hecho`, `memoria`), mapas (`mapa`, `mundo`), `turno`, `pausar`, `imagen ninguna`/`buscar`/`elegir` por id de biblioteca, `guardar`, `retro`, `leccion`. |
 | **CLI deliberada** (`bin/mesa ...`, la que teclea una persona) | Lo anterior **y** la administración e importaciones: `harness` (instalar la skill, regenerar adaptadores, verificar), `servir`, `documento agregar --archivo`, `imagen generar`, `imagen biblioteca-agregar`, rutas o URLs en `imagen elegir`, y el catálogo externo (`fuentes buscar` y `fuentes actualizar` salen a la red). |
-| **Visor** (el navegador, `bin/mesa servir`) | Leer lo público (`partida.json`, bitácora, chat, imágenes), **escribir la memoria** (hechos clave, «Hasta ahora», crónica: `POST /api/memoria`, con el mismo motor que `hecho`/`memoria`) y, si se arrancó con `--agente`, **hablar con el narrador** (`POST /api/chat`, `/cancelar`, `/sesion-nueva`, `/permiso`). Fichas, dados, escena y mapas los cambia solo el narrador, con sus herramientas. |
+| **Visor** (el navegador, `bin/mesa servir`) | Leer la partida **filtrada por lo que saben los personajes** (`mesa/vista.py`), **escribir la memoria** (`POST /api/memoria`), **jugar con la ficha propia** (`POST /api/tirar`: pruebas, ataques, daño, descansos, vida, inventario) y, si se arrancó con `--agente`, **hablar con el narrador** (`POST /api/chat`). Crear o configurar campañas (`POST /api/campana`) también vale desde la sala; los permisos del agente y cambiar de agente o de sesión son solo del **anfitrión**. Enemigos, escena y mapas los cambia el narrador. |
 
 La política vive en `mesa/capacidades.py` y se aplica dos veces: al parsear el comando y,
 con el mismo examen, a cada cambio anidado de `turno --cambio`. No basta bloquear el primer
@@ -53,6 +53,32 @@ pintarlos.
 usuario autorizado (por defecto, el dueño del nodo; o los de `--tailscale-usuario`). Esa cabecera la
 pone tailscaled, que atiende la conexión y la pasa desde 127.0.0.1; un cliente de fuera no puede
 fabricarla. Los demás usuarios de la tailnet leen, pero no escriben.
+
+## La sala online (`servir --sala`)
+
+Una sala deja jugar desde fuera (por ejemplo, detrás de un túnel) con una **clave de sala**
+(`X-Mesa-Sala`): `--sala` genera una de 128 bits y `--clave-sala` exige al menos 16 caracteres.
+Con sala activa, **leer** la API también pide la clave; las imágenes de `/media/` siguen abiertas.
+
+Hay dos papeles:
+
+- **Anfitrión**: este equipo (loopback y `Host` local) o el dueño por Tailscale. Puede todo lo
+  del visor, incluido lo que pone a trabajar herramientas del equipo: responder a los permisos
+  del agente y cambiar de agente o de sesión.
+- **Invitado** (la clave): primero reclama un PJ (`POST /api/reclamar`, un PJ por persona) y a
+  partir de ahí escribe en el chat **firmando siempre como ese PJ** y tira o cambia **solo su
+  ficha**. Nunca la de otro jugador ni la de un enemigo, y nunca permisos ni agente. Sí puede
+  crear o configurar campañas: nunca se pisan PJ existentes ni una biblia escrita a mano, la
+  partida activa del narrador no cambia y la sala crea como mucho 5 campañas por arranque.
+
+Lo que sale de la API pasa por `vista.py`. Los PJ que juega una persona se ven enteros; de los
+demás (enemigos, PNJ y PJ con `piloto: narrador`) solo lo que se ve. El nombre real de quien no
+es conocido no viaja en el estado, la zona, la bitácora, los errores ni el texto del narrador,
+y su vida, CA, ataque y modificadores tampoco, salvo `revelar_stats`. Un ataque se dirige por el
+nombre público: el real no se resuelve, así que no sirve para adivinarlo.
+
+Los números del cuerpo se validan (sin `NaN` ni infinitos, con rangos) y el estado se guarda
+como JSON estricto. El visor envía una CSP que no permite scripts en línea ni nada de fuera.
 
 ## El chat con el narrador
 
