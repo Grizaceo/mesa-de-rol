@@ -2746,7 +2746,7 @@ function abrirPanelCampana(modo = "nueva") {
 $("#boton-campana")?.addEventListener("click", () => {
   const panel = $("#panel-campana");
   if (!panel) return;
-  if (panel.hidden) abrirPanelCampana(app.chat.length === 0 ? "configurar" : "nueva");
+  if (panel.hidden) abrirPanelCampana(app.datos && app.chat.length === 0 ? "configurar" : "nueva");
   else panel.hidden = true;
 });
 $("#cerrar-campana")?.addEventListener("click", () => { $("#panel-campana").hidden = true; });
@@ -3161,7 +3161,12 @@ async function iniciar() {
     app.slug = pedida || activa || partidas[0]?.slug;
     $("#selector-partida").innerHTML = partidas.map((p) => `<option value="${esc(p.slug)}"${p.slug === app.slug ? " selected" : ""}>${esc(p.titulo)}</option>`).join("");
     $("#selector-partida").addEventListener("change", (ev) => { location.search = `?p=${encodeURIComponent(ev.target.value)}`; });
-    if (!app.slug) { $("#nombre-historia").textContent = "No hay partidas"; return; }
+    if (!app.slug) {
+      // Un repo recién clonado no trae partidas: el botón de campaña tiene que estar a mano para crear la primera.
+      $("#nombre-historia").textContent = "No hay partidas: crea la primera con «+ Campaña / Ambiente»";
+      pintarComposer();
+      return;
+    }
     try { app.reclamo = sessionStorage.getItem(`mesa-reclamo-${app.slug}`) || ""; } catch { app.reclamo = ""; }
     await refrescarVisor();  // con la partida ya elegida: ¿sigue vigente el PJ reclamado?
     const { eventos } = await api(`/api/eventos?p=${encodeURIComponent(app.slug)}&desde=0`);

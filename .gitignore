@@ -18,3 +18,9 @@ partidas/*/eventos.jsonl.tmp
 partidas/*/.narrador.json
 # La caché del catálogo externo se regenera con `bin/mesa fuentes actualizar`: no viaja en git.
 biblioteca/fuentes/
+# Las partidas son de cada mesa y se quedan en su equipo; viajan la plantilla y la de ejemplo.
+partidas/*
+!partidas/_plantilla/
+!partidas/los-hermanos-del-neva/
+# La partida activa también es de cada equipo.
+.mesa-activa
