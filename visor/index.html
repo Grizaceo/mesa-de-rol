@@ -16,8 +16,10 @@
     <div id="reloj" class="reloj"></div>
     <div class="barra-controles">
       <span id="conexion" class="conexion" data-estado="conectando">conectando…</span>
+      <span id="conectados" class="conectados" title="Jugadores conectados en la partida" hidden></span>
       <label class="oculto-visual" for="selector-partida">Partida</label>
       <select id="selector-partida"></select>
+      <button id="boton-campana" type="button" title="Crear campaña nueva o definir qué ambiente quieren jugar" hidden>+ Campaña / Ambiente</button>
       <button id="boton-tema" type="button" title="Cambiar tema">Tema: auto</button>
     </div>
     <button id="abrir-der" class="abrir-lado" type="button" aria-controls="lado-der" aria-expanded="false">Mapa</button>
@@ -63,22 +65,78 @@
     </aside>
 
     <main class="centro" aria-label="Chat de la partida">
+      <section id="panel-campana" class="panel-campana" hidden aria-label="Configurar campaña y ambiente">
+        <form id="form-campana" class="form-campana">
+          <header class="form-campana-cabeza">
+            <div>
+              <span class="eyebrow">Sesión cero · D&D 2024 (6 características)</span>
+              <h2>¿Qué campaña y ambiente quieren jugar?</h2>
+            </div>
+            <button type="button" id="cerrar-campana" title="Cerrar">✕</button>
+          </header>
+          <div class="campana-modos">
+            <label class="marcar"><input type="radio" name="campana-modo" value="nueva" checked> Crear campaña nueva</label>
+            <label class="marcar"><input type="radio" name="campana-modo" value="configurar"> Configurar la partida actual</label>
+          </div>
+          <div class="campana-presets">
+            <span class="texto-3">Ideas rápidas:</span>
+            <button type="button" class="mini" data-preset="cripta">Fantasía oscura</button>
+            <button type="button" class="mini" data-preset="intriga">Intriga urbana</button>
+            <button type="button" class="mini" data-preset="piratas">Piratas y mar astral</button>
+            <button type="button" class="mini" data-preset="isekai">Isekai / Contratos</button>
+          </div>
+          <div class="campana-grid">
+            <label>Título de la campaña
+              <input type="text" id="campana-titulo" maxlength="100" placeholder="Ej.: Crónicas de Ceniza" required>
+            </label>
+            <label>Tono (separado por comas)
+              <input type="text" id="campana-tono" maxlength="160" placeholder="Ej.: aventura, misterio, táctico, humor negro">
+            </label>
+            <label>Época / Mundo
+              <input type="text" id="campana-epoca" maxlength="200" placeholder="Ej.: Fantasía medieval tardía, magia escasa y peligrosa">
+            </label>
+            <label>Lugar donde empezamos
+              <input type="text" id="campana-lugar" maxlength="200" placeholder="Ej.: Ciudad portuaria de Bruma Hundida">
+            </label>
+          </div>
+          <label>Nuestros personajes (Nombre y clase, separados por coma; solo se añaden los nuevos, las fichas que ya existen no se tocan)
+            <input type="text" id="campana-personajes" maxlength="300" placeholder="Ej.: Kael (Guerrero), Lyra (Pícara)">
+          </label>
+          <label>¿De qué quieren que trate la campaña y cómo quieren empezar?
+            <textarea id="campana-idea" rows="3" maxlength="1500" placeholder="Cuéntenle al narrador qué tipo de historia buscan, qué ambiente les gusta, si prefieren más exploración, intriga o combate táctico, y cuál es la situación inicial…"></textarea>
+          </label>
+          <p id="campana-aviso" class="memoria-aviso" aria-live="polite"></p>
+          <div class="campana-acciones">
+            <button type="submit" id="campana-arrancar" class="principal" data-iniciar="si">Crear y que el Narrador arme la Escena 1</button>
+            <button type="submit" id="campana-guardar" data-iniciar="no">Solo guardar ambiente</button>
+          </div>
+        </form>
+      </section>
       <div id="chat" class="chat">
         <div id="chat-historial"></div>
         <div id="chat-vivo" aria-live="polite"></div>
       </div>
       <form id="composer" class="composer">
         <p id="composer-aviso" class="composer-aviso texto-3" hidden></p>
+        <div id="sala-acceso" class="composer-sala" hidden>
+          <label for="clave-sala-input">Clave de sala:</label>
+          <input type="password" id="clave-sala-input" placeholder="Pega el código de invitación" autocomplete="off">
+          <button type="submit" id="entrar-sala" class="principal">Entrar a la mesa</button>
+        </div>
         <div class="composer-fila">
           <label class="oculto-visual" for="mensaje">Tu acción</label>
           <textarea id="mensaje" rows="2" maxlength="4000" placeholder="¿Qué hace tu personaje? (Enter envía · Mayús+Enter, salto de línea)"></textarea>
           <div class="composer-botones">
             <button type="submit" id="enviar" class="principal">Enviar</button>
+            <button type="button" id="abrir-tiradas" title="Abrir panel de tiradas y habilidades (Ctrl+K)">🎲 Tiradas</button>
+            <button type="button" id="preguntar-gm" title="Preguntar al Director fuera de personaje (sin avanzar la escena ni gastar turno)">Preguntar al GM</button>
             <button type="button" id="detener" hidden>Detener</button>
           </div>
         </div>
         <div class="composer-pie">
           <div class="composer-narrador">
+            <label for="selector-jugador" class="oculto-visual">Personaje</label>
+            <select id="selector-jugador" title="Elegir personaje con el que hablas" hidden></select>
             <label for="selector-agente" class="oculto-visual">Agente narrador</label>
             <select id="selector-agente" title="Elegir CLI narrador (ACP)" hidden></select>
             <span id="estado-narrador" class="texto-3" aria-live="polite"></span>
@@ -110,6 +168,41 @@
     </aside>
   </div>
   <div id="velo" class="velo" hidden></div>
+
+  <div id="modal-tiradas" class="modal-tiradas-fondo" role="dialog" aria-modal="true" aria-label="Lanzar dados y pruebas" hidden>
+    <div class="modal-tiradas">
+      <button type="button" id="cerrar-tiradas" class="modal-tiradas-cerrar" title="Cerrar (Esc)">✕</button>
+      <div class="modal-tiradas-busqueda">
+        <span class="icono-buscar" aria-hidden="true">⌕</span>
+        <input type="search" id="buscar-tirada" placeholder="Buscar tirada… (Percepción, Sigilo, Iniciativa, Ataque, Salvación, Strength…)" autocomplete="off">
+      </div>
+      <div class="modal-tiradas-barra">
+        <label class="tirada-ctrl">Personaje
+          <select id="tirada-quien"></select>
+        </label>
+        <div class="tirada-modos" role="group" aria-label="Modo de tirada">
+          <button type="button" data-modo-tirada="normal" class="activo">Normal</button>
+          <button type="button" data-modo-tirada="ventaja">Ventaja</button>
+          <button type="button" data-modo-tirada="desventaja">Desventaja</button>
+        </div>
+        <label class="tirada-ctrl">CD / CA
+          <input type="number" id="tirada-cd" min="1" max="35" placeholder="Opc.">
+        </label>
+        <label class="tirada-ctrl">Objetivo
+          <input type="text" id="tirada-objetivo" maxlength="40" placeholder="Nombre (obligatorio si hay enemigos)">
+        </label>
+        <label class="tirada-check" title="Si está activo, el Narrador responde automáticamente a esta tirada en el chat">
+          <input type="checkbox" id="tirada-narrar"> Narrar con GM
+        </label>
+      </div>
+      <p id="tirada-estado" class="tirada-estado" aria-live="polite" hidden></p>
+      <div id="catalogo-tiradas" class="catalogo-tiradas"></div>
+    </div>
+  </div>
+
+  <div id="modal-ddb" class="modal-tiradas-fondo" role="dialog" aria-modal="true" aria-label="Hoja de personaje D&D Beyond" hidden>
+    <div id="contenido-ddb" class="ddb-modal"></div>
+  </div>
 
   <script type="module" src="/visor/app.js"></script>
 </body>
