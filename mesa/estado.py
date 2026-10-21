@@ -289,7 +289,12 @@ def escribir(slug: str, datos: dict | None = None, eventos=()) -> list[dict]:
             "datos": datos,
             "eventos": completos,
         }
-        _escribir_texto(directorio / DIARIO, json.dumps(diario, ensure_ascii=False, indent=2) + "\n")
+        try:
+            # JSON estricto: un NaN o un infinito rompería al navegador que lee la partida.
+            texto_diario = json.dumps(diario, ensure_ascii=False, indent=2, allow_nan=False) + "\n"
+        except ValueError:
+            raise ValueError(f"{slug}: hay un número no válido (NaN o infinito) en el cambio: no se guarda") from None
+        _escribir_texto(directorio / DIARIO, texto_diario)
         _aplicar(slug, diario)
         ruta_diario(slug).unlink()
         return completos

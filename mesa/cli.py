@@ -15,7 +15,7 @@ from pathlib import Path
 
 from . import (
     bloqueo, capacidades, chat, dados, distribucion, esquemas, estado, fuentes, harness, imagenes, informes, lecciones,
-    mapas, memoria, migraciones, reglas, reglas_2024, sesion,
+    mapas, memoria, migraciones, reglas, reglas_2024, sesion, vista,
 )
 from .texto import con_signo, norm
 
@@ -24,7 +24,7 @@ from .texto import con_signo, norm
 # Los de solo lectura no lo toman: el visor puede leer mientras alguien escribe.
 ESCRIBEN = frozenset({
     "retomar", "pausar", "tirar", "suerte", "prueba", "ataque", "dano",
-    "vida", "condicion", "habilidad", "vendaje", "descanso", "enemigo", "nivel",
+    "vida", "condicion", "habilidad", "vendaje", "descanso", "enemigo", "nivel", "piloto",
     "iniciativa", "conjuro", "adjudicar",
     "escena", "pnj", "pista", "documento", "trama", "misterio", "recurso", "reloj",
     "turno", "regla", "nota", "imagen", "hecho", "memoria", "mapa", "mundo",
@@ -338,6 +338,9 @@ def c_vida(args) -> None:
         evento = {"tipo": "vida_temporal", "quien": ficha["nombre"], "cantidad": args.delta, "motivo": args.motivo, **cambio}
         _cerrar(args, slug, datos, evento, f"{ficha['nombre']}: PG temporales {cambio['antes']} → {cambio['despues']}")
         return
+    if getattr(args, "revivir", False):
+        ficha.pop("muerto", None)
+        ficha.pop("salvaciones_muerte", None)
     cambio = reglas.aplicar_vida(ficha, args.delta, partida=datos)
     evento = {"tipo": "vida", "quien": ficha["nombre"], "delta": args.delta, "motivo": args.motivo, **cambio}
     _cerrar(args, slug, datos, evento, f"{ficha['nombre']}: vida {cambio['antes']} → {cambio['despues']}/{cambio['maximo']}")
@@ -428,30 +431,74 @@ def c_enemigo(args) -> None:
     lista = datos.setdefault("enemigos", [])
     if args.accion == "agregar":
         base = dict(reglas.PLANTILLAS_ENEMIGO.get(norm(args.plantilla or ""), {}))
-        for campo in ("vida", "defensa", "ataque", "dano", "proteccion"):
-            if getattr(args, campo) is not None:
+        for campo in ("vida", "defensa", "ataque", "dano", "proteccion", "aspecto", "raza", "altura"):
+            if getattr(args, campo, None) is not None:
                 base[campo] = getattr(args, campo)
+        if getattr(args, "conocido", False):
+            base["conocido"] = True
+        elif getattr(args, "desconocido", False):
+            base["conocido"] = False
         if "vida" not in base:
             raise ValueError("indica --vida o una --plantilla (rata, perro, maton, guardia)")
         base.update({"nombre": args.nombre, "vida_max": base["vida"], "condiciones": []})
         base.setdefault("defensa", 10)
         lista.append(base)
         texto = f"Amenaza en escena: {args.nombre} (vida {base['vida']}, defensa {base['defensa']}, daño {base.get('dano', '-')})"
+        alias = vista.politica(datos)["alias"].get(args.nombre)
+        if alias:
+            texto += f" · en el visor se ve como «{alias}» hasta `enemigo revelar`"
+    elif args.accion == "revelar":
+        ocultas = datos.get("identidades_ocultas") or {}
+        ficha = next((e for e in lista if norm(e.get("nombre", "")) == norm(args.nombre)), None)
+        real = ficha["nombre"] if ficha else next((k for k in ocultas if norm(k) == norm(args.nombre)), None)
+        if real is None:
+            raise ValueError(f"no hay amenaza ni identidad oculta llamada {args.nombre!r}")
+        if ficha is not None:
+            ficha["conocido"] = True
+            if args.stats:
+                ficha["revelar_stats"] = True
+        ocultas.pop(real, None)
+        if not ocultas:
+            datos.pop("identidades_ocultas", None)
+        texto = f"{real}: identidad revelada" + (" y estadísticas a la vista" if args.stats else "")
     elif args.accion == "quitar":
         _, ficha = estado.buscar({"enemigos": lista}, args.nombre)
+        _guardar_identidades(datos, [ficha])
         lista.remove(ficha)
         texto = f"{ficha['nombre']} sale de escena"
     else:
+        _guardar_identidades(datos, list(lista))
         lista.clear()
         texto = "Sin amenazas en escena"
     evento = {"tipo": "enemigo", "accion": args.accion, "nombre": args.nombre}
-    if args.accion != "agregar" and not lista:
+    if args.accion in ("quitar", "limpiar") and not lista:
         # Sin amenazas, el combate terminó: vuelven las habilidades «por combate».
         recargadas = [f"{p}: «{h}»" for p, h in _recargar(datos, {"combate"})]
         if recargadas:
             evento["recargadas"] = recargadas
             texto += f". Fin del combate: se recargan {'; '.join(recargadas)}"
     _cerrar(args, slug, datos, evento, texto)
+
+
+def _guardar_identidades(datos: dict, fichas: list[dict]) -> None:
+    """Quien sale de escena sin haberse revelado sigue oculto en la bitácora vieja del visor."""
+    alias = vista.politica(datos)["alias"]
+    ocultas = {f["nombre"]: alias[f["nombre"]] for f in fichas if f.get("nombre") in alias}
+    if ocultas:
+        datos.setdefault("identidades_ocultas", {}).update(ocultas)
+
+
+def c_piloto(args) -> None:
+    """Regla de la casa: el narrador lleva a un PJ mientras su jugador falta, o se lo devuelve."""
+    slug, datos = _cargar(args)
+    _, ficha = estado.buscar({"personajes": datos.get("personajes", [])}, args.quien)
+    if args.lleva == "narrador":
+        ficha["piloto"] = "narrador"
+        texto = f"{ficha['nombre']}: lo lleva el narrador (regla de la casa) hasta que vuelva su jugador"
+    else:
+        ficha.pop("piloto", None)
+        texto = f"{ficha['nombre']}: vuelve a jugarlo su jugador"
+    _cerrar(args, slug, datos, {"tipo": "piloto", "quien": ficha["nombre"], "piloto": args.lleva}, texto)
 
 
 def c_nivel(args) -> None:
@@ -745,9 +792,13 @@ def c_pnj(args) -> None:
     if pnj is None:
         pnj = {"nombre": args.nombre, "actitud": "indiferente", "notas": []}
         lista.append(pnj)
-    for campo in ("rol", "actitud", "estado"):
-        if getattr(args, campo):
+    for campo in ("rol", "actitud", "estado", "aspecto", "raza", "altura"):
+        if getattr(args, campo, None):
             pnj[campo] = getattr(args, campo)
+    if getattr(args, "conocido", False):
+        pnj["conocido"] = True
+    elif getattr(args, "desconocido", False):
+        pnj["conocido"] = False
     if args.nota:
         pnj.setdefault("notas", []).append(args.nota)
     texto = f"PNJ {pnj['nombre']} ({pnj.get('actitud')}): {pnj.get('estado', '')} {args.nota or ''}".rstrip()
@@ -875,11 +926,15 @@ def c_turno(args) -> None:
     acciones = _leer_acciones(args.accion)
     cambios = [_parsear_cambio(c) for c in args.cambio or []]
     datos = estado.cargar(slug)
+    previos = estado.leer_eventos(slug)
     tenia_mapa_o_mundo = bool(
         (datos.get("escena") or {}).get("mapa")
         or datos.get("mundo")
-        or any(e.get("tipo") == "mapa" for e in estado.leer_eventos(slug))
+        or any(e.get("tipo") == "mapa" for e in previos)
     )
+    # El narrador no habla por un PJ que juega una persona: si registra lo que ese jugador no
+    # escribió, el turno lo dice (no lo bloquea: el jugador decide si lo da por bueno).
+    sin_declarar = informes.acciones_sin_declarar(slug, datos, acciones, previos)
     pausada = datos.pop("pausa", None) is not None
     _lote = {"slug": slug, "datos": datos, "hechos": []}
     try:
@@ -890,13 +945,18 @@ def c_turno(args) -> None:
         hechos = _lote["hechos"]
     finally:
         _lote = None
-    eventos = [evento for evento, _ in hechos] + [{"tipo": "turno", "acciones": acciones, "resumen": args.resumen}]
+    evento_turno = {"tipo": "turno", "acciones": acciones, "resumen": args.resumen}
+    if sin_declarar:
+        evento_turno["sin_declarar"] = sin_declarar
+    eventos = [evento for evento, _ in hechos] + [evento_turno]
     cambia_estado = bool(hechos) or pausada
     registrados = estado.escribir(slug, datos=datos if cambia_estado else None, eventos=eventos)
     cambios, evento = registrados[:-1], registrados[-1]
     todos = estado.leer_eventos(slug)
     numero = sum(1 for e in todos if e.get("tipo") == "turno")
     avisos = informes.revisar(datos, acciones, eventos=todos)
+    if sin_declarar:
+        avisos.insert(0, f"Sin declarar por su jugador: {', '.join(sin_declarar)}. Díselo en la respuesta: si no lo da por bueno, se corrige.")
     if args.json:
         print(json.dumps({"turno": evento, "cambios": cambios, "avisos": avisos}, ensure_ascii=False, indent=2))
         return
@@ -991,13 +1051,15 @@ def c_retro(args) -> None:
 
 
 def c_servir(args) -> None:
+    import secrets
     from . import servidor
 
     comando = shlex.split(args.agente_cmd) if args.agente_cmd else None
     agente = None if getattr(args, "sin_agente", False) else (args.agente or ("agente" if comando else "hermes"))
     tailscale = False if getattr(args, "sin_tailscale", False) else (True if args.tailscale else None)
+    clave_sala = getattr(args, "clave_sala", None) or (secrets.token_urlsafe(16) if getattr(args, "sala", False) else None)
     servidor.servir(args.host, args.puerto, agente=agente, comando=comando if agente else None,
-                    tailscale=tailscale, usuarios=args.tailscale_usuario)
+                    tailscale=tailscale, usuarios=args.tailscale_usuario, clave_sala=clave_sala)
 
 
 # ---------- parser ----------
@@ -1088,6 +1150,7 @@ def _parser() -> argparse.ArgumentParser:
 
     s = cmd("vida", c_vida, "suma o resta vida: mesa vida Jualjin -3"); s.add_argument("quien"); s.add_argument("delta", type=int); s.add_argument("--motivo")
     s.add_argument("--temporal", action="store_true", help="en D&D 2024: fija PG temporales (no se acumulan)")
+    s.add_argument("--revivir", action="store_true", help="en D&D 2024: un conjuro lo devuelve a la vida (quita «muerto» antes de curar)")
     s = cmd("condicion", c_condicion, "agrega o quita una condición (catálogo: guias/condiciones.md)")
     s.add_argument("quien"); s.add_argument("accion", choices=["agregar", "quitar"]); s.add_argument("nombre")
     s.add_argument("--efecto"); s.add_argument("--desventaja", help="atributos afectados, separados por coma, o 'todo'/'ataques'")
@@ -1101,9 +1164,15 @@ def _parser() -> argparse.ArgumentParser:
     s.add_argument("quien"); s.add_argument("nombre"); g = s.add_mutually_exclusive_group(required=True)
     g.add_argument("--usar", action="store_true"); g.add_argument("--recargar", action="store_true")
     s = cmd("enemigo", c_enemigo, "amenazas en escena")
-    s.add_argument("accion", choices=["agregar", "quitar", "limpiar"]); s.add_argument("nombre", nargs="?", default="")
+    s.add_argument("accion", choices=["agregar", "quitar", "limpiar", "revelar"]); s.add_argument("nombre", nargs="?", default="")
+    s.add_argument("--stats", action="store_true", help="con revelar: también se ven su vida, CA y ataque")
     s.add_argument("--plantilla", help="rata, perro, maton, guardia"); s.add_argument("--vida", type=int); s.add_argument("--defensa", type=int)
     s.add_argument("--ataque", type=int); s.add_argument("--dano"); s.add_argument("--proteccion", type=int)
+    s.add_argument("--aspecto", help="lo que se ve a simple vista (vestimenta, arma, complexión)")
+    s.add_argument("--raza", help="raza o especie visible"); s.add_argument("--altura", help="altura aproximada visible")
+    s.add_argument("--conocido", action="store_true"); s.add_argument("--desconocido", action="store_true")
+    s = cmd("piloto", c_piloto, "regla de la casa: el narrador lleva a un PJ ausente (narrador) o se lo devuelve a su jugador (jugador)")
+    s.add_argument("quien"); s.add_argument("lleva", choices=["narrador", "jugador"])
     s = cmd("nivel", c_nivel, "sube de nivel tras un hito: +2 vida máx. y +1 atributo o una habilidad nueva")
     s.add_argument("quien"); g = s.add_mutually_exclusive_group(required=True)
     g.add_argument("--atributo"); g.add_argument("--habilidad", help="'Nombre: qué hace'")
@@ -1218,6 +1287,9 @@ def _parser() -> argparse.ArgumentParser:
     s = cmd("pnj", c_pnj, "crea o actualiza un PNJ visible para los jugadores")
     s.add_argument("nombre"); s.add_argument("--rol"); s.add_argument("--actitud", choices=["amistosa", "indiferente", "hostil"])
     s.add_argument("--estado"); s.add_argument("--nota")
+    s.add_argument("--aspecto", help="rasgos físicos visibles a simple vista")
+    s.add_argument("--raza", help="raza o especie visible"); s.add_argument("--altura", help="altura aproximada visible")
+    s.add_argument("--conocido", action="store_true"); s.add_argument("--desconocido", action="store_true")
     s = cmd("pista", c_pista, "anota una pista descubierta"); s.add_argument("texto"); s.add_argument("--fuente")
     s = cmd("documento", c_documento, "documento del mundo (carta, telegrama, periódico...): se entrega en el chat y queda en el visor")
     s.add_argument("accion", choices=["agregar", "ver"]); s.add_argument("titulo", nargs="?", help="título (o id al ver)")
@@ -1269,6 +1341,8 @@ def _parser() -> argparse.ArgumentParser:
     s.add_argument("--tailscale", action="store_true", help="exige habilitar escritura por `tailscale serve` al dueño del nodo")
     s.add_argument("--sin-tailscale", action="store_true", help="desactiva la escritura por Tailscale aunque el nodo esté conectado")
     s.add_argument("--tailscale-usuario", action="append", metavar="LOGIN", help="con --tailscale: quién puede escribir (repetible)")
+    s.add_argument("--sala", action="store_true", help="habilita sala online con código de invitación autogenerado")
+    s.add_argument("--clave-sala", metavar="CLAVE", help="habilita sala online con la clave indicada")
     return p
 
 

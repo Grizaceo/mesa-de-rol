@@ -12,10 +12,10 @@ from .texto import con_signo, norm
 ATRIBUTOS = tuple(esquemas.NOMBRES_LEGACY)
 NOMBRE_ATRIBUTO = esquemas.NOMBRES_LEGACY
 _ALIAS_ATRIBUTO = {
-    "fue": "fuerza", "str": "fuerza", "fuer": "fuerza",
-    "agi": "agilidad", "dex": "agilidad", "des": "agilidad",
-    "ing": "ingenio", "int": "ingenio", "wis": "ingenio", "sab": "ingenio",
-    "cor": "corazon", "cha": "corazon", "car": "corazon",
+    "fue": "fuerza", "str": "fuerza", "fuer": "fuerza", "constitucion": "fuerza", "con": "fuerza",
+    "agi": "agilidad", "dex": "agilidad", "des": "agilidad", "destreza": "agilidad",
+    "ing": "ingenio", "int": "ingenio", "wis": "ingenio", "sab": "ingenio", "inteligencia": "ingenio", "sabiduria": "ingenio",
+    "cor": "corazon", "cha": "corazon", "car": "corazon", "carisma": "corazon",
 }
 
 # Las 18 habilidades del SRD 5.2 y el atributo de esta mesa que las cubre.
@@ -367,10 +367,12 @@ def describir_prueba(e: dict) -> str:
         dado = f"1d20 ({e['elegido']})"
     else:
         dado = f"2d20 con {e['modo']} ({' y '.join(map(str, e['valores']))}, vale el {e['elegido']})"
-    mods = " ".join(f"{con_signo(p['valor'])} {p['fuente']}" for p in e["partes"] if p["valor"] or p["fuente"])
-    cuerpo = f"{dado} {mods} = {e['total']}"
+    mods = " ".join(f"{con_signo(p['valor'])} {p['fuente']}" for p in e.get("partes") or [] if p["valor"] or p["fuente"])
+    # Una tirada redactada para los jugadores (vista.py) no trae modificadores ni total.
+    cuerpo = dado if e.get("total") is None else f"{dado} {mods} = {e['total']}"
     if e.get("cd") is not None:
-        cuerpo += f" contra {'Defensa' if e['tipo'] == 'ataque' else 'dificultad'} {e['cd']}"
+        defensa = "CA" if e.get("reglamento") == esquemas.REGLAMENTO_2024 else "Defensa"
+        cuerpo += f" contra {defensa if e['tipo'] == 'ataque' else 'dificultad'} {e['cd']}"
     etiquetas = {
         "critico": "¡CRÍTICO! (20 natural)",
         "uno_natural": "fallo (1 natural)",
@@ -390,23 +392,22 @@ def describir_prueba(e: dict) -> str:
         salida += f" [se anulan ventaja ({', '.join(e['ventajas'])}) y desventaja ({', '.join(e['desventajas'])})]"
     if e.get("dano"):
         d = e["dano"]
-        valores = " + ".join(str(v) for t in d["tirada"]["dados"] for v in t["valores"])
+        valores = " + ".join(str(v) for t in d["tirada"]["dados"] for v in t["valores"]) or str(d["tirada"].get("total", ""))
         if d.get("bonus_mod"):
             valores += f" {con_signo(d['bonus_mod'])} ({d.get('fuente_mod') or 'mod'})"
+        expr = d["tirada"].get("expr") or ""
+        critico = " (crítico: dados dobles)" if d["tirada"].get("critico") else ""
+        if isinstance(d.get("vida"), dict):
+            destino = f" → {d['objetivo']} {d['vida']['despues']}/{d['vida']['maximo']}"
+        else:  # objetivo desconocido para los jugadores: solo se ve cómo queda
+            destino = f" → {d['objetivo']} ({d['estado']})" if d.get("estado") else ""
         if e.get("reglamento") == esquemas.REGLAMENTO_2024:
             ajuste = f" [{d['ajuste_resistencia']}]" if d.get("ajuste_resistencia") else ""
-            salida += (
-                f"\n  daño {d['tirada']['expr']}{' (crítico: dados dobles)' if d['tirada']['critico'] else ''}: "
-                f"{valores} = {d['bruto']}{ajuste} → {d['final']}"
-                f" → {d['objetivo']} {d['vida']['despues']}/{d['vida']['maximo']}"
-            )
+            salida += f"\n  daño {expr}{critico}: {valores} = {d['bruto']}{ajuste} → {d['final']}{destino}"
         else:
-            salida += (
-                f"\n  daño {d['tirada']['expr']}{' (crítico: dados dobles)' if d['tirada']['critico'] else ''}: "
-                f"{valores} = {d['bruto']} − protección {d['proteccion']} = {d['final']}"
-                f" → {d['objetivo']} {d['vida']['despues']}/{d['vida']['maximo']}"
-            )
+            salida += f"\n  daño {expr}{critico}: {valores} = {d['bruto']} − protección {d.get('proteccion', 0)} = {d['final']}{destino}"
     elif e.get("dano_maestria"):
         dm = e["dano_maestria"]
-        salida += f"\n  maestría Rozar: {dm['final']} de daño → {dm['objetivo']} {dm['vida']['despues']}/{dm['vida']['maximo']}"
+        destino = f"{dm['vida']['despues']}/{dm['vida']['maximo']}" if isinstance(dm.get("vida"), dict) else f"({dm.get('estado', '?')})"
+        salida += f"\n  maestría Rozar: {dm['final']} de daño → {dm['objetivo']} {destino}"
     return salida

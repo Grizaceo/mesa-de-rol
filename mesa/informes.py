@@ -2,11 +2,12 @@
 
 from __future__ import annotations
 
+import json
 import os
 from collections import Counter
 from datetime import datetime
 
-from . import esquemas, estado, lecciones, mapas, memoria
+from . import esquemas, estado, lecciones, mapas, memoria, vista
 from .texto import con_signo, norm
 
 CLASES_DOCUMENTO = ("carta", "telegrama", "periodico", "nota", "cartel", "informe", "otro")
@@ -116,6 +117,57 @@ def revisar(datos: dict, acciones: dict | None = None, eventos: list[dict] | Non
     if not narrador or narrador == "sin identificar":
         avisos.append('No hay narrador identificado: `bin/mesa retomar --narrador "<harness>/<modelo>"`.')
     return avisos + memoria.avisos(datos, eventos)
+
+
+def acciones_sin_declarar(slug: str, datos: dict, acciones: dict, previos: list[dict]) -> list[str]:
+    """PJ que juega una persona con acción en el turno que su jugador no escribió desde el turno anterior.
+
+    Solo se mira cuando el turno se juega por el chat del visor (hay mensajes de jugador desde el
+    turno anterior): en la terminal el motor no ve lo que dicen los jugadores. Cuentan sus mensajes
+    (no los OOC) y lo que hizo desde el visor con su ficha. Avisa, nunca bloquea; los PJ con
+    `piloto: narrador` no cuentan.
+    """
+    if not acciones:
+        return []
+    desde = next((str(e.get("ts", "")) for e in reversed(previos) if e.get("tipo") == "turno"), "")
+    ruta = estado.dir_partida(slug) / "chat.jsonl"
+    mensajes = []
+    if ruta.exists():
+        for linea in ruta.read_text(encoding="utf-8").splitlines():
+            try:
+                m = json.loads(linea)
+            except json.JSONDecodeError:
+                continue
+            if isinstance(m, dict) and m.get("rol") == "jugador" and str(m.get("ts", "")) >= desde:
+                mensajes.append(m)
+    if not mensajes:
+        return []
+    humanos = [p for p in datos.get("personajes", []) if vista.humano(p)]
+
+    def pj_de(texto) -> str | None:
+        clave = norm(str(texto or ""))
+        if not clave:
+            return None
+        exacto = next((p["nombre"] for p in humanos if clave in {norm(p.get("nombre", "")), norm(p.get("id", ""))}), None)
+        return exacto or next((p["nombre"] for p in humanos if norm(p.get("nombre", "")).startswith(clave)), None)
+
+    declarados = set()
+    for m in mensajes:
+        if m.get("ooc"):
+            continue
+        if norm(str(m.get("autor") or "jugador")) == "jugador" and len(humanos) == 1:
+            declarados.add(humanos[0]["nombre"])
+        elif pj_de(m.get("autor")):
+            declarados.add(pj_de(m.get("autor")))
+    for e in previos:
+        if e.get("via") == "visor" and str(e.get("ts", "")) >= desde and pj_de(e.get("quien")):
+            declarados.add(pj_de(e.get("quien")))
+    sin = []
+    for clave in acciones:
+        nombre = pj_de(clave)
+        if nombre and nombre not in declarados and nombre not in sin:
+            sin.append(nombre)
+    return sin
 
 
 def documento_chat(doc: dict) -> str:

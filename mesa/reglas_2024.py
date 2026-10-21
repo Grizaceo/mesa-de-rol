@@ -19,6 +19,8 @@ Implementa las mecánicas nucleares del SRD 5.2.1 para partidas con `schema_vers
 
 from __future__ import annotations
 
+import re
+
 from . import dados, esquemas, fuentes
 from .texto import con_signo, norm
 
@@ -436,6 +438,10 @@ def aplicar_vida(ficha: dict, delta: int, partida: dict | None = None) -> dict:
     absorbido_temp = 0
     muerte_instantanea = False
 
+    if delta > 0 and ficha.get("muerto"):
+        raise ValueError(
+            f"{ficha['nombre']} ha muerto: curarlo no lo devuelve (si un conjuro lo revive, `vida \"{ficha['nombre']}\" +N --revivir`)"
+        )
     if delta < 0:
         dano_recibido = -delta
         if temp_antes > 0:
@@ -493,6 +499,8 @@ def salvacion_muerte(partida: dict, ficha: dict) -> dict:
     if ficha.get("muerto"):
         raise ValueError(f"{ficha['nombre']} ya ha muerto")
     sm = ficha.setdefault("salvaciones_muerte", {"exitos": 0, "fallos": 0, "estable": False})
+    if sm.get("estable"):
+        raise ValueError(f"{ficha['nombre']} está estable: no tira salvaciones de muerte hasta que vuelva a recibir daño")
     valor = dados.tirar_dado(20)
     revive = False
     if valor == 20:
@@ -562,6 +570,11 @@ def dano(
             cd_conc = min(30, max(10, final // 2))
             resultado["concentracion_cd"] = cd_conc
     return resultado
+
+
+def caracteristica_de_arma(atacante: dict, arma: dict) -> str:
+    """Con qué característica ataca (y suma al daño) un arma: Sutil elige la mejor; a distancia, Destreza."""
+    return _elegir_caracteristica_arma(atacante, arma, None)
 
 
 def _elegir_caracteristica_arma(atacante: dict, arma: dict, atributo_forzado: str | None) -> str:
@@ -681,8 +694,18 @@ def ataque(
     return evento
 
 
-def tirar_iniciativa(partida: dict, quienes: list[dict] | None = None) -> list[dict]:
-    """Tira iniciativa (1d20 + mod Destreza) para todos los combatientes en escena."""
+def tirar_iniciativa(
+    partida: dict,
+    quienes: list[dict] | None = None,
+    ventaja: bool | str = False,
+    desventaja: bool | str = False,
+    fusionar: bool = False,
+) -> list[dict]:
+    """Tira iniciativa (1d20 + mod Destreza) para los combatientes en escena.
+
+    La ventaja o desventaja declarada se suma a la de las condiciones (Sorprendido, Invisible...).
+    Con `fusionar`, solo se tiran `quienes` y se colocan en el orden que ya había, sin borrar a los demás.
+    """
     combatientes = quienes if quienes is not None else (
         list(partida.get("personajes", [])) + [e for e in partida.get("enemigos", []) if int(e.get("vida", 0)) > 0]
     )
@@ -690,18 +713,25 @@ def tirar_iniciativa(partida: dict, quienes: list[dict] | None = None) -> list[d
     for c in combatientes:
         mod_des = mod_caracteristica(c, "destreza")
         v_cond, d_cond, penalizador, _ = _efectos_condiciones(c, "destreza", "iniciativa")
-        modo = dados.resolver_modo(v_cond, d_cond)
+        ventajas, desventajas = _motivos(ventaja, v_cond), _motivos(desventaja, d_cond)
+        modo = dados.resolver_modo(ventajas, desventajas)
         r = dados.prueba_d20(mod_des + penalizador, cd=None, modo=modo, naturales=False)
         orden.append({
             "quien": c["nombre"],
             "modificador": mod_des + penalizador,
             "modo": modo,
+            "ventajas": ventajas,
+            "desventajas": desventajas,
             "valores": r["valores"],
             "elegido": r["elegido"],
             "total": r["total"],
             "destreza": int((c.get("atributos") or {}).get("destreza", 10)),
         })
-    orden.sort(key=lambda x: (x["total"], x["destreza"]), reverse=True)
+    if fusionar:
+        tirados = {x["quien"] for x in orden}
+        previos = (partida.get("combate") or {}).get("orden_iniciativa") or []
+        orden = [x for x in previos if isinstance(x, dict) and x.get("quien") not in tirados] + orden
+    orden.sort(key=lambda x: (x.get("total", 0), x.get("destreza", 10)), reverse=True)
     partida.setdefault("combate", {})["orden_iniciativa"] = orden
     return orden
 
@@ -719,20 +749,21 @@ def descanso(
     }
     lineas = []
     for p in objetivos:
+        # SRD 5.2.1: para empezar un descanso, corto o largo, hace falta al menos 1 PG.
+        if p.get("muerto"):
+            lineas.append(f"{p['nombre']}: ha muerto, el descanso no lo devuelve")
+            continue
+        if int(p.get("vida", 0)) < 1:
+            lineas.append(f"{p['nombre']}: a 0 PG no puede empezar un descanso (hace falta al menos 1 PG)")
+            continue
         cambios = []
         if clase == "corto" and dados_golpe > 0 and isinstance(p.get("dados_golpe"), dict):
-            dg = p["dados_golpe"]
-            disponibles = int(dg.get("actual", 0))
-            a_gastar = min(disponibles, int(dados_golpe))
-            if a_gastar > 0:
-                dado_caras = int(str(dg.get("dado", "d8")).lstrip("d"))
-                mod_con = mod_caracteristica(p, "constitucion")
-                curado_total = sum(max(1, dados.tirar_dado(dado_caras) + mod_con) for _ in range(a_gastar))
-                dg["actual"] = disponibles - a_gastar
-                cambio_vida = aplicar_vida(p, curado_total, partida=partida)
-                cambios.append(
-                    f"gasta {a_gastar}{dg.get('dado', 'd8')} → vida {cambio_vida['antes']} → {cambio_vida['despues']}/{cambio_vida['maximo']}"
-                )
+            if int(p["dados_golpe"].get("actual", 0)) > 0:
+                g = gastar_dados_golpe(partida, p, dados_golpe)
+                cv = g["vida"]
+                cambios.append(f"gasta {g['gastados']}{g['dado']} → vida {cv['antes']} → {cv['despues']}/{cv['maximo']}")
+            else:
+                cambios.append("sin Dados de Golpe que gastar")
         elif clase == "largo":
             cambio_vida = aplicar_vida(p, int(p.get("vida_max", 0)), partida=partida)
             if cambio_vida["despues"] != cambio_vida["antes"]:
@@ -761,6 +792,121 @@ def descanso(
                 cambios.append(f"«{h['nombre']}» disponible")
         lineas.append(f"{p['nombre']}: {', '.join(cambios) or 'nada que recuperar'}")
     return lineas
+
+
+def _caras_dado_golpe(dg: dict) -> int:
+    m = re.fullmatch(r"\s*(?:\d+)?[dD](\d+)\s*", str(dg.get("dado", "d8")))
+    if not m:
+        raise ValueError(f"Dado de Golpe ilegible: {dg.get('dado')!r} (usa d6, d8, d10 o d12)")
+    return int(m.group(1))
+
+
+def gastar_dados_golpe(partida: dict, ficha: dict, cantidad: int = 1) -> dict:
+    """Gasta Dados de Golpe como en un descanso corto (SRD 5.2.1): dado + mod CON por dado, mínimo 1 PG."""
+    dg = ficha.get("dados_golpe")
+    if not isinstance(dg, dict):
+        raise ValueError(f"{ficha['nombre']} no tiene Dados de Golpe en la ficha")
+    if ficha.get("muerto"):
+        raise ValueError(f"{ficha['nombre']} ha muerto")
+    if int(ficha.get("vida", 0)) < 1:
+        raise ValueError(f"{ficha['nombre']} está a 0 PG: para descansar y gastar Dados de Golpe hace falta al menos 1 PG")
+    disponibles = int(dg.get("actual", 0))
+    if disponibles <= 0:
+        raise ValueError(f"{ficha['nombre']} no tiene Dados de Golpe (0/{dg.get('max', 0)}): se recuperan con un descanso largo")
+    if int(ficha.get("vida", 0)) >= int(ficha.get("vida_max", 0)):
+        raise ValueError(f"{ficha['nombre']} ya tiene la vida al máximo: no hace falta gastar Dados de Golpe")
+    caras = _caras_dado_golpe(dg)
+    a_gastar = min(disponibles, max(1, int(cantidad)))
+    mod_con = mod_caracteristica(ficha, "constitucion")
+    valores = [dados.tirar_dado(caras) for _ in range(a_gastar)]
+    curado = sum(max(1, v + mod_con) for v in valores)
+    dg["actual"] = disponibles - a_gastar
+    return {
+        "dado": f"d{caras}", "valores": valores, "mod_con": mod_con, "curado": curado,
+        "gastados": a_gastar, "restantes": dg["actual"], "vida": aplicar_vida(ficha, curado, partida=partida),
+    }
+
+
+# Dado de golpe, característica principal y salvaciones de cada clase (SRD 5.2.1).
+CLASES_2024 = {
+    "barbaro": ("d12", "fuerza", ("fuerza", "constitucion")),
+    "bardo": ("d8", "carisma", ("destreza", "carisma")),
+    "brujo": ("d8", "carisma", ("sabiduria", "carisma")),
+    "clerigo": ("d8", "sabiduria", ("sabiduria", "carisma")),
+    "druida": ("d8", "sabiduria", ("inteligencia", "sabiduria")),
+    "explorador": ("d10", "destreza", ("fuerza", "destreza")),
+    "guerrero": ("d10", "fuerza", ("fuerza", "constitucion")),
+    "hechicero": ("d6", "carisma", ("constitucion", "carisma")),
+    "mago": ("d6", "inteligencia", ("inteligencia", "sabiduria")),
+    "monje": ("d8", "destreza", ("fuerza", "destreza")),
+    "paladin": ("d10", "fuerza", ("sabiduria", "carisma")),
+    "picaro": ("d8", "destreza", ("destreza", "inteligencia")),
+}
+_FORMAS_CLASE = {
+    "barbaro": ("barbaro", "barbara", "barbarian"), "bardo": ("bardo", "barda", "bard"),
+    "brujo": ("brujo", "bruja", "warlock"), "clerigo": ("clerigo", "cleriga", "cleric"),
+    "druida": ("druida", "druid"), "explorador": ("explorador", "exploradora", "ranger", "montaraz"),
+    "guerrero": ("guerrero", "guerrera", "fighter"), "hechicero": ("hechicero", "hechicera", "sorcerer"),
+    "mago": ("mago", "maga", "wizard"), "monje": ("monje", "monja", "monk"),
+    "paladin": ("paladin", "paladina"), "picaro": ("picaro", "picara", "rogue"),
+}
+_ARRAY_ESTANDAR = (15, 14, 13, 12, 10, 8)
+_COLORES_PJ = ("#2a78d6", "#d97706", "#16a34a", "#9333ea", "#dc2626", "#0891b2")
+
+
+_FANTASIA = re.compile(r"magi|fantas|reino|imperio|reliqui|gremio|dragon|mazmorra|cripta|elf|enan|caballer|medieval|espada|corsari|pirat|aethermark|contrato")
+_FUTURO = re.compile(r"futur|espacial|nave estelar|ciber|cyber|galax|androide|planeta")
+
+
+def monedas_de(ambientacion: dict) -> list[str]:
+    """Las monedas que corren en la ambientación: oro, plata y cobre solo en fantasía; si no, las de su época."""
+    if ambientacion.get("monedas"):
+        return [str(m) for m in ambientacion["monedas"]][:4]
+    texto = norm(" ".join([str(ambientacion.get("epoca") or ""), str(ambientacion.get("lugar") or ""), " ".join(ambientacion.get("tono") or [])]))
+    if _FANTASIA.search(texto):
+        return ["oro", "plata", "cobre"]
+    if _FUTURO.search(texto):
+        return ["creditos"]
+    anio = re.search(r"\b(1[5-9]\d\d|20\d\d)\b", texto)
+    if "chile" in texto:
+        return ["escudos"] if anio and 1960 <= int(anio.group(1)) <= 1975 else ["pesos"]
+    return ["dinero"]
+
+
+def clase_de(rol: str) -> str | None:
+    palabras = set(re.findall(r"[a-z]+", norm(rol or "")))
+    return next((clase for clase, formas in _FORMAS_CLASE.items() if palabras & set(formas)), None)
+
+
+def ficha_inicial(nombre: str, rol: str, indice: int = 0, monedas: list[str] | None = None) -> dict:
+    """Una ficha de nivel 1 para empezar: matriz estándar según la clase, PG = dado máximo + CON, sin armadura.
+
+    Es un punto de partida honesto, no una ficha completa: el narrador la ajusta en la sesión cero.
+    """
+    clase = clase_de(rol)
+    dado, principal, salvaciones = CLASES_2024.get(clase, ("d8", ("fuerza", "destreza", "inteligencia", "carisma")[indice % 4], ()))
+    orden = [principal, "constitucion"] + [a for a in ("destreza", "sabiduria", "inteligencia", "carisma", "fuerza") if a not in (principal, "constitucion")]
+    valores = dict(zip(orden, _ARRAY_ESTANDAR))
+    atributos = {a: valores[a] for a in esquemas.IDS_2024}
+    ficha = {"atributos": atributos}
+    vida = int(dado.lstrip("d")) + mod_caracteristica(ficha, "constitucion")
+    ca = 10 + mod_caracteristica(ficha, "destreza")
+    monedas = monedas or ["oro", "plata", "cobre"]
+    fantasia = monedas == ["oro", "plata", "cobre"]  # fuera de la fantasía, nada de espadas ni dagas
+    if principal == "fuerza":
+        arma = ({"nombre": "Arma principal", "dano": "1d8", "tipo_dano": "cortante", "competente": True} if fantasia
+                else {"nombre": "Barra de hierro", "dano": "1d6", "tipo_dano": "contundente", "competente": True})
+    else:
+        arma = {"nombre": "Daga" if fantasia else "Navaja", "dano": "1d4", "tipo_dano": "perforante", "propiedades": ["sutil", "ligera"], "competente": True}
+    return {
+        "id": re.sub(r"[^a-z0-9]+", "-", norm(nombre)).strip("-") or f"pj{indice + 1}",
+        "nombre": nombre, "rol": rol, "nivel": 1, "vida": vida, "vida_max": vida, "ca": ca, "defensa": ca,
+        "proteccion": 0, "velocidad": 9.0, "color": _COLORES_PJ[indice % len(_COLORES_PJ)], "atributos": atributos,
+        "dados_golpe": {"dado": dado, "actual": 1, "max": 1},
+        "competencias": {"salvaciones": list(salvaciones), "habilidades": []},
+        "aspecto": "", "personalidad": "", "bueno_para": rol, "rasgos": [], "habilidades": [], "equipo": [arma],
+        "condiciones": [], "monedas": {m: 0 for m in monedas},
+    }
 
 
 def _buscar_conjuro_en_ficha_o_cache(lanzador: dict, nombre_o_clave: str) -> dict | None:
@@ -897,17 +1043,25 @@ def usar_consumible(
     *,
     objetivo: dict | None = None,
 ) -> dict:
-    """Consume una unidad de un objeto de `equipo` y aplica su curación si es numérica."""
-    clave = norm(nombre)
-    item = next(
-        (e for e in ficha.get("equipo", []) if norm(e.get("nombre", "")).startswith(clave) or clave in norm(e.get("nombre", ""))),
-        None,
-    )
-    if item is None:
+    """Consume una unidad de un consumible de `equipo` y aplica su curación si es numérica.
+
+    El nombre exacto manda; si no, un prefijo que señale a un solo objeto. Lo que no es consumible no se gasta.
+    """
+    clave = norm(nombre or "")
+    if not clave:
+        raise ValueError("falta el nombre del objeto que se usa")
+    equipo = ficha.get("equipo", [])
+    candidatos = [e for e in equipo if norm(e.get("nombre", "")) == clave] or [e for e in equipo if norm(e.get("nombre", "")).startswith(clave)]
+    if len(candidatos) != 1:
+        if candidatos:
+            raise ValueError(f"{nombre!r} es ambiguo en el equipo de {ficha['nombre']}: {', '.join(e['nombre'] for e in candidatos)}")
         raise ValueError(f"{ficha['nombre']} no lleva {nombre!r} en su equipo")
-    cantidad = int(item.get("cantidad", 1 if item.get("consumible") else 0))
+    item = candidatos[0]
+    if not item.get("consumible"):
+        raise ValueError(f"«{item['nombre']}» no es un consumible: se equipa o se usa en una acción, no se gasta")
+    cantidad = int(item.get("cantidad", 1))
     if cantidad <= 0:
-        raise ValueError(f"«{item['nombre']}» no es consumible o ya no quedan unidades (0)")
+        raise ValueError(f"de «{item['nombre']}» ya no quedan unidades")
     item["cantidad"] = cantidad - 1
     receptor = objetivo or ficha
     efecto_txt = str(item.get("efecto") or "").strip()

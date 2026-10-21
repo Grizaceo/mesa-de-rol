@@ -30,12 +30,15 @@ import time
 import uuid
 from pathlib import Path
 
-from . import estado
+from . import estado, vista
 from .acp import ClienteACP, ErrorACP, elegir_opcion
 
 AGENTES = {
     "hermes": ["hermes", "-p", "narrador", "acp"],
     "devin": ["devin", "acp"],
+    # Codex y Claude Code hablan ACP con los adaptadores de Zed (versión fijada: nada recién publicado).
+    "codex": ["npx", "-y", "@zed-industries/codex-acp@0.16.0"],
+    "claude": ["npx", "-y", "@zed-industries/claude-code-acp@0.16.2"],
     "gemini": ["gemini", "--experimental-acp"],
 }
 ESPERA_PERMISO = 300
@@ -95,8 +98,37 @@ def preambulo(slug: str, narrador: str) -> str:
         "En cada turno: tira con las herramientas cuando haga falta, registra con `turno` (incluyendo siempre "
         "`escena posicion <quien> \"<dónde>\" --celda <C4>` si se mueve, y `mapa cargar`/`mapa generar` + "
         "`mundo aqui` si cambia de lugar o de escena) y responde.\n"
+        "Nunca hables por un PJ que juega una persona (todos salvo los que tengan `piloto: narrador`): ni sus "
+        "palabras, ni sus decisiones, ni lo que piensa o siente. Narra el mundo y los PNJ; si falta la acción de "
+        "alguien, congela la escena y pregúntale. Cada mensaje llega con el nombre del PJ que habla entre corchetes; "
+        "si `turno` avisa «sin declarar», díselo a ese jugador para que decida si lo da por bueno.\n"
         "Responde ahora a este mensaje del jugador:\n\n"
     )
+
+
+# Verbos con los que un narrador pone voz, decisión o sentimiento a un personaje.
+_VERBOS_DE_VOZ = (
+    r"(?:dice|dijo|responde|respondi[oó]|contesta|contest[oó]|grita|grit[oó]|susurra|susurr[oó]|murmura|murmur[oó]|"
+    r"exclama|exclam[oó]|pregunta|pregunt[oó]|decide|decidi[oó]|piensa|pens[oó]|siente|sinti[oó])"
+)
+
+
+def voces_de_pj(texto: str, nombres: list[str]) -> list[str]:
+    """PJ a los que el texto parece poner palabras, decisiones o sentimientos (heurística: solo avisa).
+
+    Detecta «**Kael:** …», «—…—, dice Kael» y «Kael decide/piensa/siente…».
+    """
+    encontrados = []
+    for nombre in nombres:
+        n = re.escape(nombre)
+        patrones = (
+            rf"(?m)^\s*[*_]*{n}[*_]*\s*:",
+            rf"[—–\"«“][^\n]{{1,240}}?[—–\"»”]\s*,?\s*{_VERBOS_DE_VOZ}\s+{n}(?!\w)",
+            rf"(?<!\w){n}\s+{_VERBOS_DE_VOZ}(?!\w)",
+        )
+        if any(re.search(p, texto or "", re.IGNORECASE) for p in patrones):
+            encontrados.append(nombre)
+    return encontrados
 
 
 def _texto_seguro(texto: str, maximo: int = 200) -> str:
@@ -191,7 +223,10 @@ class Narrador:
 
     # ---------- acciones ----------
 
-    def enviar(self, slug: str, texto: str, autor: str = "jugador") -> dict:
+    def enviar(self, slug: str, texto: str, autor: str = "jugador", *, fuera_de_personaje: bool = False,
+               texto_agente: str | None = None) -> dict:
+        """Anota el mensaje y despierta al narrador. `texto_agente` es lo que recibe el agente si
+        difiere de lo publicado (por ejemplo, una tirada con datos que los jugadores no ven)."""
         texto = str(texto or "").strip()
         if not texto:
             raise ValueError("el mensaje está vacío")
@@ -203,11 +238,15 @@ class Narrador:
                 raise Ocupado("el narrador todavía está respondiendo: espera o detén su turno")
             p["en_curso"] = {"id": uuid.uuid4().hex[:12], "partes": [], "aviso": "lee la mesa", "desde": _ultimo_evento(slug), "inicio": estado.ahora()}
         try:
-            mensaje = self._anotar(slug, {"rol": "jugador", "autor": autor, "texto": texto})
+            entrada = {"rol": "jugador", "autor": autor, "texto": texto}
+            if fuera_de_personaje:
+                entrada["ooc"] = True
+            mensaje = self._anotar(slug, entrada)
         except Exception:
             p["en_curso"] = None
             raise
-        threading.Thread(target=self._turno, args=(slug, texto, autor), daemon=True).start()
+        al_agente = str(texto_agente).strip()[:MAX_MENSAJE] if texto_agente else texto
+        threading.Thread(target=self._turno, args=(slug, al_agente, autor, fuera_de_personaje), daemon=True).start()
         return mensaje
 
     def cancelar(self, slug: str) -> bool:
@@ -295,7 +334,7 @@ class Narrador:
         self._guardar_sesion(slug, p["sesion"], p["nombre"])
         return True
 
-    def _turno(self, slug: str, texto: str, autor: str) -> None:
+    def _turno(self, slug: str, texto: str, autor: str, fuera_de_personaje: bool = False) -> None:
         p = self._p(slug)
         en_curso = p["en_curso"]
         inicio = time.monotonic()
@@ -304,7 +343,17 @@ class Narrador:
         try:
             cliente = self._cliente(slug)
             nueva = self._abrir_sesion(slug, cliente)
-            motivo = cliente.preguntar(p["sesion"], (preambulo(slug, p["nombre"]) if nueva else "") + texto)
+            if fuera_de_personaje:
+                quien_txt = f" ({autor})" if autor and autor != "jugador" else ""
+                mensaje_agente = (
+                    f"[CONSULTA FUERA DE PERSONAJE AL GM{quien_txt} — CONGELA LA ESCENA: "
+                    "responde la duda sobre la partida, el mundo, pistas o reglas sin avanzar el turno, "
+                    "sin tirar dados con riesgo ni gastar acciones de ningún personaje, y vuelve a dejar "
+                    f"la decisión abierta]: {texto}"
+                )
+            else:
+                mensaje_agente = f"[{autor}] {texto}" if autor and autor != "jugador" else texto
+            motivo = cliente.preguntar(p["sesion"], (preambulo(slug, p["nombre"]) if nueva else "") + mensaje_agente)
             self._sumar_eventos(slug)
             partes = en_curso["partes"]
             texto_final = "".join(x["texto"] for x in partes if x["tipo"] == "texto").strip()
@@ -314,6 +363,13 @@ class Narrador:
                 "rol": "narrador", "autor": p["nombre"], "texto": texto_final, "partes": partes, "parada": motivo,
                 "rango": [en_curso["desde"], _ultimo_evento(slug)], "segundos": round(time.monotonic() - inicio, 1),
             })
+            humanos = [x["nombre"] for x in estado.cargar(slug).get("personajes", []) if vista.humano(x)]
+            voces = voces_de_pj(texto_final, humanos)
+            if voces:
+                self._anotar(slug, {"rol": "sistema", "aviso": "voz_de_pj", "quien": voces, "texto": (
+                    f"⚠ Puede que el narrador haya hablado o decidido por {', '.join(voces)}. "
+                    "Si no lo das por bueno, dilo en el chat y se corrige."
+                )})
         except Exception as e:  # frontera del hilo: cualquier fallo queda en el chat, nunca un turno colgado
             self._sumar_eventos(slug)
             if en_curso["partes"]:
