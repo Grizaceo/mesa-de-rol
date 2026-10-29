@@ -12,7 +12,6 @@ from __future__ import annotations
 import argparse
 import os
 
-from . import imagenes
 
 CLI = "cli"    # la CLI completa: incluye administración e importaciones deliberadas
 JUEGO = "juego"  # el MCP: solo acciones de mesa
@@ -83,4 +82,5 @@ def de_biblioteca(fuente: str) -> bool:
     Las rutas y las URLs leen o descargan de fuera: desde el MCP solo se elige lo que
     una persona ya puso en biblioteca/imagenes/.
     """
+    from . import imagenes
     return any(item.get("id") == fuente or item.get("archivo") == fuente for item in imagenes.leer_biblioteca())

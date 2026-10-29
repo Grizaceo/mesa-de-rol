@@ -166,7 +166,19 @@ class TestWheelInstalado(unittest.TestCase):
     def test_la_rueda_lleva_los_recursos_y_nada_de_las_partidas(self):
         with zipfile.ZipFile(self.rueda) as z:
             nombres = z.namelist()
-        for esperado in ("mesa/recursos/visor/index.html", "mesa/recursos/visor/app.js",
+        for esperado in ("mesa/cli/__init__.py", "mesa/mapas/__init__.py", "mesa/servidor/__init__.py",
+                         "mesa/reglas_2024/__init__.py", "mesa/reglas_2024/magia.py",
+                         "mesa/reglas_2024/catalogo.py", "mesa/reglas_2024/personaje.py",
+                         "mesa/reglas_2024/combate.py",
+                         "mesa/mapas/terreno.py", "mesa/mapas/vision.py", "mesa/mapas/luz.py",
+                         "mesa/servidor/sala.py", "mesa/servidor/campanas.py", "mesa/servidor/tiradas.py",
+                         "mesa/recursos/visor/index.html", "mesa/recursos/visor/app.js",
+                         "mesa/recursos/visor/nucleo.js", "mesa/recursos/visor/ficha.js",
+                         "mesa/recursos/visor/zona.js", "mesa/recursos/visor/mundo.js",
+                         "mesa/recursos/visor/dados.js",
+                         "mesa/recursos/visor/historia.js", "mesa/recursos/visor/chat.js",
+                         "mesa/recursos/visor/campana.js", "mesa/recursos/visor/tiradas.js",
+                         "mesa/recursos/visor/inventario.js",
                          "mesa/recursos/partidas/_plantilla/partida.json",
                          "mesa/recursos/adaptadores/hermes/mesa-de-rol/SKILL.md",
                          "mesa/recursos/adaptadores/comandos/retomar.md"):
@@ -205,6 +217,7 @@ class TestWheelInstalado(unittest.TestCase):
         self.assertEqual(salida["index"], 200)
         self.assertTrue(salida["index_lleva_app"], salida)
         self.assertEqual(salida["app"], 200)
+        self.assertEqual(salida["nucleo"], 200)
         self.assertEqual(salida["estado"], 200)
         self.assertEqual(salida["slug"], "campana")
         self.assertEqual(salida["media"], 200)
@@ -242,6 +255,7 @@ class TestWheelInstalado(unittest.TestCase):
             "salida['index'] = codigo\n"
             "salida['index_lleva_app'] = b'app.js' in cuerpo\n"
             "salida['app'] = obtener('/visor/app.js')[0]\n"
+            "salida['nucleo'] = obtener('/visor/nucleo.js')[0]\n"
             "codigo, cuerpo = obtener('/api/estado')\n"
             "salida['estado'] = codigo\n"
             "salida['slug'] = json.loads(cuerpo)['slug']\n"

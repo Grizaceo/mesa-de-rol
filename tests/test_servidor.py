@@ -43,6 +43,11 @@ class TestServidor(unittest.TestCase):
 
     def test_visor_y_api(self):
         self.assertEqual(self.get("/")[0], 200)
+        for modulo in ("/visor/app.js", "/visor/nucleo.js", "/visor/ficha.js", "/visor/zona.js",
+                       "/visor/mundo.js", "/visor/dados.js", "/visor/historia.js", "/visor/chat.js",
+                       "/visor/campana.js", "/visor/tiradas.js", "/visor/inventario.js"):
+            with self.subTest(modulo=modulo):
+                self.assertEqual(self.get(modulo)[0], 200, modulo)
         codigo, tipo, cuerpo = self.get("/api/estado?p=neva")
         self.assertEqual((codigo, tipo), (200, "application/json"))
         self.assertEqual(json.loads(cuerpo)["slug"], "neva")
