@@ -10,9 +10,11 @@ import { pintarZona } from "./zona.js";
 import { pintarMundo } from "./mundo.js";
 import { pintarAmbiente, pintarHechos, pintarRegistro } from "./historia.js";
 import { pintarChat, pintarComposer } from "./chat.js";
+import { actualizarMoodAmbiente, alternarModoSonido, aplicarModoSonido, leerModoSonido } from "./audio.js";
 import "./campana.js";
 import "./tiradas.js";
 
+$("#boton-sonido")?.addEventListener("click", alternarModoSonido);
 $("#boton-tema").addEventListener("click", () => {
   const orden = ["auto", "light", "dark"];
   aplicarTema(orden[(orden.indexOf(leerTema()) + 1) % orden.length]);
@@ -70,6 +72,7 @@ function pintarEstado() {
   $("#escena-numero").textContent = `Escena ${e.numero ?? ""}`;
   $("#titulo-escena").textContent = e.titulo || "";
   $("#escena-meta").textContent = [e.lugar, e.hora].filter(Boolean).join(" · ");
+  actualizarMoodAmbiente(d);
   pintarVista();
 }
 
@@ -152,6 +155,7 @@ hooks.abrirCajon = abrirCajon;
 
 async function iniciar() {
   aplicarTema(leerTema());
+  aplicarModoSonido(leerModoSonido());
   $("#nuevo-categoria").innerHTML = CATEGORIAS.map((c) => `<option${c === "otro" ? " selected" : ""}>${c}</option>`).join("");
   pintarVistas();
   try {

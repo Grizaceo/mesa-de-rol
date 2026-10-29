@@ -44,14 +44,38 @@ export function svgArteItem(x) {
   if (/arco|bow|ballesta/.test(n)) {
     return `<svg viewBox="0 0 120 100"><defs><radialGradient id="g-bow" cx="50%" cy="50%" r="60%"><stop offset="0%" stop-color="#3b2d1f"/><stop offset="100%" stop-color="#11161f"/></radialGradient></defs><rect width="120" height="100" fill="url(#g-bow)"/><path d="M38 14 C78 30, 78 70, 38 86" fill="none" stroke="#c89b52" stroke-width="5" stroke-linecap="round"/><line x1="38" y1="14" x2="38" y2="86" stroke="#cbd5e1" stroke-width="1.6"/><line x1="24" y1="50" x2="88" y2="50" stroke="#e2b86b" stroke-width="3"/><polygon points="92,50 80,44 82,50 80,56" fill="#94a3b8"/></svg>`;
   }
-  if (/escudo|shield/.test(n)) {
+  if (/flecha|virote|municion|carcaj|ammo/.test(n)) {
+    return `<svg viewBox="0 0 120 100"><rect width="120" height="100" fill="#171411"/><path d="M40 34 L56 26 L78 76 L58 84 Z" fill="#78350f" stroke="#d97706" stroke-width="2.5"/><line x1="36" y1="18" x2="64" y2="74" stroke="#e2b86b" stroke-width="2.5"/><line x1="48" y1="14" x2="72" y2="70" stroke="#e2b86b" stroke-width="2.5"/><polygon points="34,14 42,18 36,24" fill="#cbd5e1"/><polygon points="46,10 54,14 48,20" fill="#cbd5e1"/></svg>`;
+  }
+  if (/escudo|rodela|shield/.test(n)) {
     return `<svg viewBox="0 0 120 100"><defs><radialGradient id="g-sh" cx="50%" cy="45%" r="60%"><stop offset="0%" stop-color="#2c3e55"/><stop offset="100%" stop-color="#0f141c"/></radialGradient></defs><rect width="120" height="100" fill="url(#g-sh)"/><path d="M36 18 H84 V50 C84 70, 60 84, 60 88 C60 84, 36 70, 36 50 Z" fill="#475569" stroke="#d8a657" stroke-width="4"/><circle cx="60" cy="48" r="9" fill="#d8a657"/></svg>`;
   }
-  if (/pocion|elixir|frasco|potion/.test(n)) {
+  if (/casco|yelmo|corona|capucha|sombrero|head|helm/.test(n)) {
+    return `<svg viewBox="0 0 120 100"><rect width="120" height="100" fill="#131922"/><path d="M34 62 V46 C34 26, 86 26, 86 46 V62 L76 76 H66 V52 H54 V76 H44 Z" fill="#64748b" stroke="#cbd5e1" stroke-width="3"/><line x1="60" y1="22" x2="60" y2="52" stroke="#d8a657" stroke-width="3.5"/></svg>`;
+  }
+  if (/amuleto|collar|medallon|relicario|neck/.test(n)) {
+    return `<svg viewBox="0 0 120 100"><rect width="120" height="100" fill="#171321"/><path d="M38 22 C38 56, 82 56, 82 22" fill="none" stroke="#d8a657" stroke-width="3"/><polygon points="60,46 74,64 60,82 46,64" fill="#0ea5e9" stroke="#fde047" stroke-width="3"/></svg>`;
+  }
+  if (/anillo|sortija|sello|ring/.test(n)) {
+    return `<svg viewBox="0 0 120 100"><rect width="120" height="100" fill="#18141c"/><circle cx="60" cy="56" r="20" fill="none" stroke="#eab308" stroke-width="7"/><polygon points="60,22 70,32 60,40 50,32" fill="#ef4444" stroke="#fef08a" stroke-width="2"/></svg>`;
+  }
+  if (/guante|manopla|brazal|gloves/.test(n)) {
+    return `<svg viewBox="0 0 120 100"><rect width="120" height="100" fill="#171614"/><path d="M40 76 L36 46 C36 38, 44 38, 46 44 V30 C46 24, 56 24, 56 30 V26 C56 20, 66 20, 66 26 V32 C66 26, 76 26, 76 34 V56 L82 76 Z" fill="#78350f" stroke="#d97706" stroke-width="2.8"/></svg>`;
+  }
+  if (/pocion|elixir|frasco|vial|antidoto|potion/.test(n)) {
     return `<svg viewBox="0 0 120 100"><rect width="120" height="100" fill="#131922"/><rect x="52" y="16" width="16" height="12" rx="2" fill="#a16207"/><path d="M48 28 H72 L84 62 C86 76, 76 86, 60 86 C44 86, 34 76, 36 62 Z" fill="#dc2626" stroke="#fca5a5" stroke-width="3"/><path d="M44 58 Q60 52 76 58" fill="none" stroke="#fecaca" stroke-width="2"/></svg>`;
   }
-  if (/venda|vendaje|bandage/.test(n)) {
+  if (/venda|vendaje|botiquin|bandage/.test(n)) {
     return `<svg viewBox="0 0 120 100"><rect width="120" height="100" fill="#182026"/><ellipse cx="56" cy="54" rx="26" ry="18" fill="#e2e8f0" stroke="#94a3b8" stroke-width="3"/><ellipse cx="56" cy="46" rx="26" ry="12" fill="#f8fafc" stroke="#cbd5e1" stroke-width="2"/><ellipse cx="56" cy="46" rx="9" ry="4" fill="#64748b"/><path d="M76 58 L98 70 L90 78 L66 66" fill="#e2e8f0" stroke="#94a3b8" stroke-width="2"/></svg>`;
+  }
+  if (/antorcha|farol|linterna|vela|torch|lantern/.test(n)) {
+    return `<svg viewBox="0 0 120 100"><rect width="120" height="100" fill="#1c1510"/><path d="M60 14 C74 28, 76 44, 60 52 C44 44, 46 28, 60 14 Z" fill="#f97316" stroke="#fde047" stroke-width="2.5"/><path d="M60 24 C67 32, 67 42, 60 48 C53 42, 53 32, 60 24 Z" fill="#fef08a"/><rect x="55" y="50" width="10" height="36" rx="3" fill="#78350f" stroke="#d97706" stroke-width="2"/></svg>`;
+  }
+  if (/racion|comida|pan|queso|odre|vino|cerveza|ration|food/.test(n)) {
+    return `<svg viewBox="0 0 120 100"><rect width="120" height="100" fill="#1a1612"/><path d="M30 62 C30 40, 90 40, 90 62 C90 74, 30 74, 30 62 Z" fill="#b45309" stroke="#f59e0b" stroke-width="3"/><line x1="48" y1="46" x2="44" y2="58" stroke="#fde68a" stroke-width="2.5"/><line x1="62" y1="45" x2="58" y2="57" stroke="#fde68a" stroke-width="2.5"/><line x1="76" y1="46" x2="72" y2="58" stroke="#fde68a" stroke-width="2.5"/></svg>`;
+  }
+  if (/llave|ganzua|herramienta|cuerda|key|lockpick|rope/.test(n)) {
+    return `<svg viewBox="0 0 120 100"><rect width="120" height="100" fill="#14181f"/><circle cx="42" cy="50" r="14" fill="none" stroke="#eab308" stroke-width="5"/><line x1="56" y1="50" x2="90" y2="50" stroke="#eab308" stroke-width="5" stroke-linecap="round"/><line x1="76" y1="50" x2="76" y2="62" stroke="#eab308" stroke-width="4.5"/><line x1="86" y1="50" x2="86" y2="66" stroke="#eab308" stroke-width="4.5"/></svg>`;
   }
   if (/bota|calzado|zapato|boots/.test(n)) {
     return `<svg viewBox="0 0 120 100"><rect width="120" height="100" fill="#1a1612"/><path d="M36 22 H58 V58 L84 66 C88 68, 88 78, 80 78 H34 V22 Z" fill="#78350f" stroke="#d97706" stroke-width="3"/><line x1="34" y1="74" x2="84" y2="74" stroke="#451a03" stroke-width="4"/></svg>`;
@@ -65,10 +89,19 @@ export function svgArteItem(x) {
   if (/cota|armadura|malla|cuero|chaleco|vest|armor/.test(n) || cat === "armor") {
     return `<svg viewBox="0 0 120 100"><defs><radialGradient id="g-arm" cx="50%" cy="45%" r="60%"><stop offset="0%" stop-color="#334155"/><stop offset="100%" stop-color="#0f141c"/></radialGradient></defs><rect width="120" height="100" fill="url(#g-arm)"/><path d="M38 18 L50 26 H70 L82 18 L92 36 L80 46 V82 H40 V46 L28 36 Z" fill="#475569" stroke="#94a3b8" stroke-width="3"/><line x1="60" y1="26" x2="60" y2="80" stroke="#cbd5e1" stroke-width="2"/></svg>`;
   }
-  if (/carta|contrato|pergamino|libro|mapa|scroll/.test(n)) {
+  if (/carta|contrato|pergamino|libro|grimorio|mapa|scroll/.test(n)) {
     return `<svg viewBox="0 0 120 100"><rect width="120" height="100" fill="#181512"/><rect x="32" y="16" width="56" height="68" rx="4" fill="#dfd2b5" stroke="#a16207" stroke-width="3"/><line x1="42" y1="32" x2="78" y2="32" stroke="#57534e" stroke-width="2.5"/><line x1="42" y1="44" x2="78" y2="44" stroke="#57534e" stroke-width="2.5"/><line x1="42" y1="56" x2="68" y2="56" stroke="#57534e" stroke-width="2.5"/><circle cx="72" cy="70" r="7" fill="#9333ea"/></svg>`;
   }
-  if (cat === "weapon" || /espada|mandoble|estoque|daga|cuchillo|hacha|jabalina|lanza|bichero|baton/.test(n)) {
+  if (/baston|vara|varita|cetro|orbe|foco|wand|staff/.test(n)) {
+    return `<svg viewBox="0 0 120 100"><rect width="120" height="100" fill="#151221"/><line x1="28" y1="82" x2="76" y2="34" stroke="#92400e" stroke-width="6" stroke-linecap="round"/><circle cx="82" cy="28" r="11" fill="#38bdf8" stroke="#bae6fd" stroke-width="3"/><circle cx="82" cy="28" r="4" fill="#f0f9ff"/></svg>`;
+  }
+  if (/hacha|maza|martillo|clava|barra|axe|mace|hammer/.test(n)) {
+    return `<svg viewBox="0 0 120 100"><rect width="120" height="100" fill="#16181d"/><line x1="30" y1="82" x2="78" y2="26" stroke="#92400e" stroke-width="6" stroke-linecap="round"/><path d="M56 18 L92 38 L78 54 L46 32 Z" fill="#94a3b8" stroke="#e2e8f0" stroke-width="2.5"/></svg>`;
+  }
+  if (/daga|cuchillo|navaja|estilete|dagger/.test(n)) {
+    return `<svg viewBox="0 0 120 100"><rect width="120" height="100" fill="#131720"/><polygon points="84,20 52,58 44,50" fill="#e2e8f0" stroke="#94a3b8" stroke-width="2"/><line x1="38" y1="44" x2="58" y2="64" stroke="#d8a657" stroke-width="4" stroke-linecap="round"/><line x1="32" y1="70" x2="46" y2="56" stroke="#78350f" stroke-width="5" stroke-linecap="round"/></svg>`;
+  }
+  if (cat === "weapon" || /espada|mandoble|estoque|cimitarra|rapier|jabalina|lanza|bichero|baton/.test(n)) {
     return `<svg viewBox="0 0 120 100"><defs><radialGradient id="g-wp" cx="50%" cy="50%" r="60%"><stop offset="0%" stop-color="#2a3441"/><stop offset="100%" stop-color="#0d1117"/></radialGradient></defs><rect width="120" height="100" fill="url(#g-wp)"/><line x1="28" y1="76" x2="88" y2="18" stroke="#e2e8f0" stroke-width="6" stroke-linecap="round"/><line x1="28" y1="76" x2="88" y2="18" stroke="#94a3b8" stroke-width="2"/><line x1="34" y1="56" x2="52" y2="74" stroke="#d8a657" stroke-width="5" stroke-linecap="round"/><line x1="22" y1="82" x2="36" y2="68" stroke="#78350f" stroke-width="6" stroke-linecap="round"/><circle cx="20" cy="84" r="4.5" fill="#d8a657"/></svg>`;
   }
   return `<svg viewBox="0 0 120 100"><rect width="120" height="100" fill="#141a22"/><rect x="34" y="26" width="52" height="48" rx="8" fill="#334155" stroke="#d8a657" stroke-width="3"/><path d="M48 26 V20 H72 V26" fill="none" stroke="#d8a657" stroke-width="3"/><circle cx="60" cy="50" r="6" fill="#f5d087"/></svg>`;

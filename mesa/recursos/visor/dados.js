@@ -1,5 +1,6 @@
 // Tarjetas de dados del visor: el chat y el historial pintan las tiradas de la bitácora.
 import { $, app, ATRIBUTOS, esc, es2024, ES_TIRADA, MOVIMIENTO_REDUCIDO, signo } from "./nucleo.js";
+import { sonarEfecto } from "./audio.js";
 
 // ---------- dados ----------
 const FORMAS = {
@@ -129,14 +130,18 @@ export function animarDados(raiz) {
     const nodos = [...tarjeta.querySelectorAll(".dado")];
     const final = () => {
       nodos.forEach((n) => { n.classList.remove("rodando"); n.querySelector(".valor").textContent = n.dataset.valor; });
-      tarjeta.querySelector(".resultado")?.classList.remove("esperando");
+      const resEl = tarjeta.querySelector(".resultado");
+      resEl?.classList.remove("esperando");
+      if (resEl?.dataset.r) sonarEfecto(resEl.dataset.r);
     };
     if (MOVIMIENTO_REDUCIDO) return final();
     nodos.forEach((n) => n.classList.add("rodando"));
     const inicio = performance.now();
+    let ticks = 0;
     const paso = () => {
       if (!tarjeta.isConnected || performance.now() - inicio > 900) return final();
       nodos.forEach((n) => { n.querySelector(".valor").textContent = 1 + Math.floor(Math.random() * Number(n.dataset.caras)); });
+      if (ticks++ % 2 === 0) sonarEfecto("rodar");
       setTimeout(paso, 70);
     };
     paso();

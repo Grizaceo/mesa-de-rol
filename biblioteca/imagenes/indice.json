@@ -1,1 +1,98 @@
-[]
+[
+  {
+    "id": "posada-chimenea",
+    "archivo": "posada-chimenea.png",
+    "etiquetas": [
+      "taberna",
+      "posada",
+      "chimenea",
+      "interior",
+      "noche",
+      "fuego",
+      "mesas"
+    ],
+    "descripcion": "Salón de posada de madera con chimenea encendida, vigas oscuras, mesas y faroles cálidos",
+    "fuente": "biblioteca/imagenes (ilustración propia para mesa-de-rol)",
+    "licencia": "CC0-1.0"
+  },
+  {
+    "id": "cripta-sellada",
+    "archivo": "cripta-sellada.png",
+    "etiquetas": [
+      "cripta",
+      "mazmorra",
+      "ruinas",
+      "altar",
+      "columnas",
+      "subterraneo",
+      "oscuridad"
+    ],
+    "descripcion": "Bóveda subterránea de piedra con columnas antiguas, antorchas azules y altar del sello",
+    "fuente": "biblioteca/imagenes (ilustración propia para mesa-de-rol)",
+    "licencia": "CC0-1.0"
+  },
+  {
+    "id": "sendero-bosque",
+    "archivo": "sendero-bosque.png",
+    "etiquetas": [
+      "bosque",
+      "camino",
+      "sendero",
+      "arboles",
+      "exterior",
+      "arroyo",
+      "viaje"
+    ],
+    "descripcion": "Sendero forestal entre árboles centenarios, niebla baja y arroyo iluminado al amanecer",
+    "fuente": "biblioteca/imagenes (ilustración propia para mesa-de-rol)",
+    "licencia": "CC0-1.0"
+  },
+  {
+    "id": "puente-niebla",
+    "archivo": "puente-niebla.png",
+    "etiquetas": [
+      "puente",
+      "rio",
+      "niebla",
+      "piedra",
+      "frontera",
+      "farol",
+      "amanecer"
+    ],
+    "descripcion": "Puente de arcos de piedra sobre un río caudaloso entre la bruma con faroles encendidos",
+    "fuente": "biblioteca/imagenes (ilustración propia para mesa-de-rol)",
+    "licencia": "CC0-1.0"
+  },
+  {
+    "id": "puerto-nocturno",
+    "archivo": "puerto-nocturno.png",
+    "etiquetas": [
+      "puerto",
+      "muelle",
+      "mar",
+      "barco",
+      "noche",
+      "niebla",
+      "ciudad"
+    ],
+    "descripcion": "Muelle de madera en la niebla nocturna con siluetas de veleros, faroles y reflejos en el agua",
+    "fuente": "biblioteca/imagenes (ilustración propia para mesa-de-rol)",
+    "licencia": "CC0-1.0"
+  },
+  {
+    "id": "campamento-hoguera",
+    "archivo": "campamento-hoguera.png",
+    "etiquetas": [
+      "campamento",
+      "hoguera",
+      "noche",
+      "descanso",
+      "estrellas",
+      "exterior",
+      "fuego"
+    ],
+    "descripcion": "Campamento nocturno bajo el cielo estrellado con hoguera central y tiendas de campaña",
+    "fuente": "biblioteca/imagenes (ilustración propia para mesa-de-rol)",
+    "licencia": "CC0-1.0"
+  }
+]
