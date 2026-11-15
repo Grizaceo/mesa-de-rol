@@ -4,7 +4,7 @@ El reglamento de la mesa: lo bastante simple para principiantes y lo bastante ce
 quinta edición como para que el vocabulario de los jugadores («tirada de percepción», «tengo
 ventaja», «¡20 natural!») funcione tal cual.
 
-- **Base:** el *System Reference Document 5.2.1* (SRD 5.2.1, reglas de 2024, CC-BY-4.0). Atribución en [`LICENCIA-SRD.md`](../LICENCIA-SRD.md).
+- **Base:** el *System Reference Document 5.2.1* (SRD 5.2.1, reglas de 2024, CC-BY-4.0). Atribución en [`LICENCIA-SRD.md`](../docs/LICENCIA-SRD.md).
 - **A qué partidas aplica:** a las del reglamento `d20-simple` (esquema 1), como *Los Hermanos del Neva*. Las partidas nuevas usan el esquema 2 (`reglamento: dnd-2024`, seis características con puntuación, ver `mesa/esquemas.py`); su motor de reglas llega con el corte vertical 2024 (P2), y hasta entonces `prueba`, `ataque` y `nivel` se niegan a calcular sobre una partida 2024 en vez de hacerlo mal.
 - **Simplificaciones y reglas propias:** marcadas con **[mesa]**.
 - **Qué parte del SRD respalda cada regla:** [`guias/fuente-srd.md`](../guias/fuente-srd.md).

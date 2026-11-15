@@ -24,6 +24,11 @@ bin/mesa harness lista         # qué lee cada harness
 bin/mesa harness instrucciones codex   # cómo arrancar en uno concreto
 ```
 
+La configuración de cada harness es local: `.claude/`, `.codex/`, `.cursor/`, `.gemini/`,
+`.opencode/` y `.aider.conf.yml` no viajan en el repo, los genera `harness sync` en tu máquina y
+quedan fuera de git. En el repo solo viven `CLAUDE.md`, `GEMINI.md` (punteros a `AGENTS.md`) y
+`.mcp.json`, que no dependen del harness.
+
 ## Matriz
 
 Cada harness se probó en esta máquina el 2026-10-15 con su propio comando de listado de MCP, sin abrir sesiones de modelo.

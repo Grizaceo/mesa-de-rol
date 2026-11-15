@@ -1,158 +1,95 @@
 # Mesa de rol
 
-Partidas de rol por chat donde **una IA dirige la historia** a medida que los jugadores
-responden. El repo pone alrededor del director todo lo que una buena mesa necesita:
+Una mesa de rol por chat en la que una IA dirige la historia y los dados que salen son los que se tiran.
 
-- **Reglas d20 simples**, compatibles con D&D quinta edición (SRD 5.2.1) y pensadas para principiantes.
-- **Dados reales y registrados**: nada de tiradas inventadas.
-- **Estado persistente** de la partida: fichas, escena, PNJ, pistas, tramas, recursos y relojes.
-- **Un visor web para tener al lado del chat**: los dados animados, la ficha, el mapa de la zona en cuadrícula, el mapa del mundo, la ambientación, los documentos que encuentran los personajes y la memoria de la historia.
-- **Memoria que no crece con la conversación**: hechos clave, «Hasta ahora» y una línea por escena, dentro de un presupuesto. El narrador los propone y el jugador los corrige desde el visor; al retomar, eso reemplaza a releer todo el chat.
-- **Imágenes de ambiente opcionales**: tarjeta local, una imagen existente o una generada.
-- **Lecciones entre historias**: cada historia nueva arranca con lo aprendido en las anteriores.
+## Estado
 
-La primera partida, *Los Hermanos del Neva* (Rusia, 1917), está guardada en pausa justo donde quedó.
+Alpha en marcha. Funciona hoy: un motor de reglas d20 con estado persistente, un visor web para
+tener al lado del chat, una memoria de la historia que no crece con la conversación y lecciones que
+pasan de una partida a la siguiente.
 
-**Esquemas.** Cada partida declara el suyo en `partida.json`. Las de antes de los esquemas (como
-*Los Hermanos del Neva*) son legacy (`d20-simple`, cuatro atributos-bono) y se abren tal como
-quedaron. Las nuevas nacen en el esquema 2 (`dnd-2024`, seis características con puntuación,
-valores derivados en `mesa/esquemas.py`); su motor de reglas llega con el corte vertical 2024
-(P2) y hasta entonces `prueba`, `ataque` y `nivel` se niegan a calcular sobre ellas en vez de
-hacerlo mal.
+- **Partida de demo:** [`partidas/los-hermanos-del-neva/`](partidas/los-hermanos-del-neva/) es la
+  partida de ejemplo que viaja en el repo. Dos hermanos pescadores en Petrogrado, otoño de 1917, con
+  su biblia, su bitácora, sus mapas y sus notas del director. Está guardada en pausa a mitad de
+  escena y se abre tal como quedó.
+- **Dos esquemas de reglas:** `d20-simple` (cuatro atributos-bono) para la demo y las partidas
+  anteriores; `dnd-2024` (seis características con puntuación) para las nuevas. El motor de 2024
+  todavía no tira: ver [Límites](#límites).
+- **Sin CI ni publicaciones:** no hay workflow, ni tags, ni instalación en un registro de paquetes.
+  Las pruebas se corren a mano.
 
-## Jugar, con el harness que quieras
+## Cómo correrlo
 
-El narrador puede vivir en Claude Code, Codex, Hermes, OpenCode, Devin, Gemini CLI, Cursor o cualquier agente que lea `AGENTS.md`:
-
-```bash
-cd ~/.hermes/workspace/ACTIVE/mesa-de-rol
-claude      # o: codex · hermes · opencode · devin · gemini · cursor-agent
-# luego: «retomemos la partida» (o /retomar donde haya comandos)
-```
-
-El agente ejecuta `bin/mesa retomar --narrador "<harness>/<modelo>"`, lee el traspaso pendiente y dirige con las herramientas del repo:
-
-- **Cualquier harness con shell:** la CLI `bin/mesa`.
-- **Harnesses con MCP:** el servidor `mesa` (`bin/mesa-mcp`), ya configurado para cada uno.
-
-Se puede cambiar de harness entre sesiones: `mesa pausar` en uno y `mesa retomar` en otro. La matriz, lo verificado y las particularidades de cada harness están en [`guias/harnesses.md`](guias/harnesses.md).
-
-Para ver la mesa en vivo:
+Tres comandos, probados en un clon limpio. No hay que instalar nada: Python 3.10 o superior, sin
+dependencias.
 
 ```bash
-bin/mesa servir                # http://127.0.0.1:8765
+git clone https://github.com/Grizaceo/mesa-de-rol.git && cd mesa-de-rol
+bin/mesa harness sync    # deja tu harness listo (Claude Code, Codex, OpenCode, Gemini CLI, Cursor)
+bin/mesa servir          # el visor, en http://127.0.0.1:8765
 ```
 
-**Jugar desde el navegador, con el chat al centro** (como Friends & Fables): el visor habla con el
-narrador por ACP (Agent Client Protocol), el mismo protocolo que usan los editores, y la
-conversación ocurre en la página, con las tiradas y los cambios como tarjetas dentro del chat y la
-ficha, la memoria y los mapas a los lados.
+El visor abre con la partida de demo: los dados, la ficha, el mapa de la zona, los documentos que
+encuentran los personajes y la memoria de la historia.
 
-```bash
-bin/mesa servir --agente hermes              # Hermes, perfil `narrador`
-bin/mesa servir --agente devin               # o Devin (`devin acp`), gemini...
-bin/mesa servir --agente-cmd 'hermes -p otro acp'
-bin/mesa servir --agente hermes --tailscale  # además, escribir desde tu otro equipo vía `tailscale serve`
+Para jugar de verdad, abre tu harness en el repo y dile «retomemos la partida». El narrador lee
+[`AGENTS.md`](AGENTS.md) y tira con las herramientas del repo: la CLI (`bin/mesa`) o el servidor MCP
+(`bin/mesa-mcp`). La guía de cada harness está en [`guias/harnesses.md`](guias/harnesses.md).
+
+## Cómo funciona
+
+```mermaid
+flowchart LR
+  J["Jugador escribe en el chat"] --> N["Narrador: lee AGENTS.md"]
+  N --> T["prueba · ataque · tirar · suerte"]
+  T --> B["estado y bitácora en el repo"]
+  B --> V["visor web"]
+  V --> J
 ```
 
-El agente sigue siendo el mismo, con este `AGENTS.md` y el MCP `mesa` de la partida; lo que piensa y lo
-que leen sus herramientas no se muestra. Sin `--agente`, el centro muestra la bitácora como conversación
-y se narra desde la terminal, como siempre. Ver [`guias/seguridad.md`](guias/seguridad.md).
+- **El contrato vive en el repo.** `AGENTS.md` es lo que lee cualquier agente, en cualquier harness;
+  `adaptadores/` es el origen de los comandos `/retomar`, `/pausar` y `/nueva-historia`.
+- **Los dados son reales.** El narrador no inventa resultados: cada tirada pasa por el motor y
+  queda en `eventos.jsonl` con los dados que salieron.
+- **El estado es un archivo.** Fichas, escena, PNJ, pistas, tramas y recursos viven en
+  `partida.json`; los secretos del director, en `director.md`, que el visor no sirve.
+- **La memoria no crece con la conversación.** Hechos clave, «Hasta ahora» y una línea por escena,
+  dentro de un presupuesto. Retomar una partida en una sesión nueva no es releer el chat.
+- **Cambiar de harness es pausar y retomar.** `bin/mesa pausar` deja el traspaso; `bin/mesa retomar`
+  lo recoge en otro agente, en la misma máquina o en otra.
 
-No hay que instalar nada: Python ≥ 3.10, sin dependencias. `bin/mesa` es la CLI. Si se prefiere
-instalarla, `uv tool install .` o `pip install -e .` dejan disponible el comando `mesa`.
+El detalle está en [`guias/`](guias/README.md) (jugadores, director, combate, condiciones) y en
+[`docs/`](docs/README.md) (la CLI, la arquitectura y la atribución del SRD).
 
-**Dónde viven los datos.** Corriendo desde el repositorio, en `partidas/`, `lecciones/` y
-`biblioteca/` del propio repo. Con el paquete instalado (wheel), en `$MESA_RAIZ` si está definida,
-o en `$XDG_DATA_HOME/mesa-de-rol` (por defecto `~/.local/share/mesa-de-rol`). El visor, la
-plantilla y los adaptadores viajan dentro del paquete (`mesa/recursos/`): `bin/mesa recursos
-sync` regenera esa copia desde el repositorio y `mesa harness verificar` avisa si se
-desincronizó. El paquete nunca lleva partidas, lecciones ni bibliotecas personales.
+## Cómo se hizo
 
-## La CLI
+- **Decidí y revisé:** el alcance, la arquitectura y qué se publica. El mantenimiento (Grizaceo)
+  escribió el reglamento, el contrato del director y las guías, y aprobó cada cambio que entró.
+- **Escrito por la IA:** casi todo el código, el motor de reglas, el visor y las pruebas, en Claude
+  Code, Codex, Hermes y Devin. La primera versión de este README también la escribió un agente.
+- **Verifiqué:** `python3 -m unittest discover -s tests` (261 pruebas) pasa en esta máquina, el
+  quickstart de arriba se probó en un clon limpio y `vitrina check .` no reporta errores.
+- **Sin verificar:** el comportamiento de cada harness se probó en la máquina del mantenimiento
+  (2026-10-15) y no en CI; la generación de imágenes sale a la red y necesita claves propias, así
+  que no se probó aquí; no hay publicaciones ni instalaciones publicadas.
 
-| Comando | Para qué |
-|---|---|
-| `mesa partidas` / `usar <slug>` / `nueva <slug> --titulo` | Elegir o crear partida |
-| `mesa retomar --narrador "<harness>/<modelo>"` | Empezar o retomar: traspaso pendiente, lecciones, reglas de la casa y estado |
-| `mesa pausar --pendiente "..." [--commit]` | Dejar el traspaso para el próximo narrador, en cualquier harness |
-| `mesa contexto [--completo]` | Lo que lee el director: lecciones, reglas de la casa, estado y últimos eventos |
-| `mesa estado` | Resumen del estado (`--breve`: una línea por personaje con lo que tiene a mano; `--json`: completo) |
-| `mesa prueba <quien> <atributo\|habilidad> --cd exigente [--ventaja M] [--desventaja M] [--oficio] [--usar H]` | Prueba d20 |
-| `mesa ataque <quien> <objetivo> [--arma] [--cobertura]` | Ataque contra Defensa y daño aplicado |
-| `mesa dano` / `tirar 2d6+1` / `suerte 30 --etiqueta` | Daño, tirada libre, d100 de suerte |
-| `mesa vida` / `condicion` / `habilidad` / `nivel` | Fichas |
-| `mesa vendaje <quien>` / `descanso corto\|largo` | Curarse y recargar habilidades |
-| `mesa enemigo agregar <nombre> --plantilla maton` | Amenazas en escena |
-| `mesa escena nueva\|editar\|posicion [--celda C4] [--cierre "..."]` | Escena actual, posiciones en metros (y en casillas si hay mapa) y su línea de crónica al cerrarla |
-| `mesa mapa zona --dibujo "..." [--leyenda c=significado]` / `mapa ver` | Mapa de la zona en cuadrícula, dibujado en texto: el visor lo pinta y `turno` lo imprime con las distancias |
-| `mesa mundo lugar\|ruta\|aqui\|quitar\|ajustar\|ver` | Mapa del mundo: lugares conocidos con coordenadas, rutas y dónde están |
-| `mesa hecho agregar\|editar\|fijar\|soltar\|archivar\|restaurar\|listar` | Hechos clave de la memoria de la historia |
-| `mesa memoria hasta-ahora\|escena\|presupuesto\|ver` | «Hasta ahora», crónica de escenas y cuánto entra al contexto |
-| `mesa pnj` / `pista` / `trama` / `misterio` / `recurso` / `reloj` | El mundo |
-| `mesa documento agregar\|ver` | Documentos del mundo (cartas, telegramas, periódicos): bloque para el chat y pestaña en el visor |
-| `mesa turno --accion "Nombre=..." --resumen "..." [--cambio '...']` | El turno y sus cambios de estado en un solo paso (todos o ninguno), con avisos |
-| `mesa revisar` / `regla` / `nota` | Avisos de consistencia, reglas de la casa y notas |
-| `mesa imagen ninguna\|elegir\|buscar\|generar\|biblioteca-agregar` | Imagen de la escena |
-| `mesa guardar` | «Guardar partida»: resumen copiable más un archivo |
-| `mesa retro` / `leccion agregar\|listar\|retirar\|incorporar\|fase` | Retrospectiva y lecciones |
-| `mesa servir [--agente hermes\|devin\|gemini] [--agente-cmd '...'] [--tailscale]` | El visor; con agente, el chat con el narrador por ACP |
-| `mesa harness lista\|sync\|verificar\|instrucciones <id>` | Adaptadores por harness y su comprobación |
-| `mesa recursos sync\|verificar` | Copia de los recursos que viaja en el paquete instalable |
-| `mesa fuentes listar\|buscar\|actualizar\|ver` | Catálogo externo con procedencia (Open5e, documento `srd-2024`): licencia, URL y fecha por entrada; la red solo en `buscar` y `actualizar` |
-| `mesa migrar [diagnosticar\|copiar <destino>] [--fichas ...]` | Diagnóstico `dry-run` y migración en copia validada de `d20-simple` a `dnd-2024` (sin tocar la partida original) |
+## Límites
 
-Todos los comandos que tiran dados o cambian algo dejan un evento en
-`partidas/<slug>/eventos.jsonl`, y el visor lo recoge en menos de un segundo.
+- **El esquema `dnd-2024` todavía no calcula tiradas.** `prueba`, `ataque` y `nivel` se niegan sobre
+  una partida con ese esquema: el motor prefiere no responder a responder mal, porque allí los
+  valores son puntuaciones y no bonos. La demo y las partidas anteriores usan `d20-simple`, que sí
+  calcula.
+- **El motor de reglas de 2024 es un corte vertical.** Hay características, combate y conjuros; el
+  resto se resuelve a mano. El detalle está en
+  [`guias/cobertura-2024.md`](guias/cobertura-2024.md).
+- **No hay modo autónomo.** Narrar exige un agente de terminal: no hay un runner que llame a un
+  modelo por API.
+- **Las imágenes cuestan crédito y salen a la red.** Son opcionales: la biblioteca local y la tarjeta
+  de escena cubren el caso normal.
+- **El visor es local.** Con `--agente` habla por ACP con el narrador; sin él, muestra la bitácora.
+  Ver [`guias/seguridad.md`](guias/seguridad.md).
+- **La configuración de cada harness es local.** `bin/mesa harness sync` la genera en tu máquina; el
+  repo solo lleva el contrato (`AGENTS.md`) y las fuentes (`adaptadores/`).
 
-**Un escritor a la vez.** Los comandos que escriben toman un candado por partida
-(`partidas/<slug>/.candado`): si otro proceso está a mitad de escritura, esperan unos segundos
-y, si sigue ocupado, avisan con un error legible en vez de pisar el cambio; las lecturas no
-esperan. El estado (`partida.json`) y la bitácora (`eventos.jsonl`) se guardan en una sola
-transacción con diario, así que un corte a mitad se rehace entero en la siguiente lectura o
-escritura, sin medio turno ni eventos duplicados.
-
-## Estructura
-
-```
-AGENTS.md          contrato del director IA: la fuente para todos los harnesses
-adaptadores/       origen de los comandos (/retomar, /pausar, /nueva-historia) y de la skill de Hermes
-CLAUDE.md GEMINI.md .mcp.json .codex/ .opencode/ .gemini/ .cursor/ .claude/ .aider.conf.yml
-                   generados por `bin/mesa harness sync` (no editar a mano)
-bin/mesa           CLI · bin/mesa-mcp: servidor MCP por stdio
-reglas/            el reglamento d20-simple (manda)
-guias/             jugadores, director, sesión cero, habilidades, combate, condiciones, entorno, imágenes, lecciones, fuente SRD
-mesa/              motor en Python: dados, reglas, estado, imágenes, informes, servidor, CLI
-visor/             visor web (HTML, CSS y JS sin dependencias)
-partidas/<slug>/   partida.json (público), eventos.jsonl, biblia.md, director.md (secreto), retro.md, guardados/, imagenes/
-partidas/_plantilla/  esqueleto de las historias nuevas
-lecciones/         lecciones.jsonl: lo aprendido entre historias
-biblioteca/        imágenes reutilizables con etiquetas y licencia
-tests/             python3 -m unittest
-```
-
-## Ideas que lo sostienen
-
-- **Agnóstico del harness.** El estado vive en el repo, el contrato en `AGENTS.md` y las herramientas son CLI y MCP con el mismo motor. Narrar desde otro agente es pausar y retomar.
-- **El director no inventa dados.** Usa `bin/mesa`, y la tirada queda en la bitácora y en el visor.
-- **Público y secreto están separados.** `partida.json` es lo que ven los jugadores; `director.md` no lo sirve el visor ni lo imprime la CLI, y el narrador lo lee con su herramienta de lectura de archivos, porque los jugadores miran la misma terminal.
-- **El contexto no crece con la historia.** El narrador retoma con la memoria (hechos clave dentro de un presupuesto, «Hasta ahora» y la crónica), el estado y los últimos eventos, no con toda la conversación; se puede abrir una sesión nueva del harness en cualquier escena. El visor solo escribe esa memoria, y solo desde este equipo (ver `guias/seguridad.md`).
-- **Afinar sin reentrenar.** Las lecciones son instrucciones con evidencia y alcance (`global`, `jugadores`, `reglas:…`, `ambientacion:…`) que se inyectan al director. Ver `guias/lecciones.md`.
-- **Imágenes opcionales y baratas por defecto.** Generar solo si se pide, porque gasta crédito y sale a la red. Ver `guias/imagenes.md`.
-
-## Desarrollo
-
-```bash
-python3 -m unittest discover -s tests -v
-```
-
-## Pendiente / ideas
-
-- Modo autónomo: un runner que llame a un modelo por API, para jugar desde Telegram o la web sin un agente de terminal (se puede apoyar en el mismo servidor MCP).
-- Narración por voz (TTS) de los bloques ESCENA.
-- Exportar la bitácora a un dataset de turnos, por si algún día se quiere reentrenar de verdad.
-
-## Licencias
-
-Las reglas adaptan el SRD 5.2.1 de Wizards of the Coast (CC-BY-4.0); ver [`LICENCIA-SRD.md`](LICENCIA-SRD.md).
-Compatible con quinta edición, sin afiliación con Wizards of the Coast.
+El código original es MIT (ver [`LICENSE`](LICENSE)); el texto de reglas adaptado del SRD 5.2.1 se
+queda bajo su licencia, CC-BY-4.0 (ver [`docs/LICENCIA-SRD.md`](docs/LICENCIA-SRD.md)).
