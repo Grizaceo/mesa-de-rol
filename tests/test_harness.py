@@ -13,7 +13,14 @@ from apoyo import REPO, repo_temporal
 class TestAdaptadores(unittest.TestCase):
     def test_los_adaptadores_del_repo_estan_en_sincronia(self):
         self.assertEqual(estado.RAIZ, REPO)
-        self.assertEqual(harness.diferencias(), [], "corre `bin/mesa harness sync` y commitea")
+        # Lo que falta no es «desincronizado»: la configuración de cada harness es local y se
+        # genera con `bin/mesa harness sync`. Lo que existe tiene que coincidir con el origen.
+        self.assertEqual(harness.desincronizados(), [], "corre `bin/mesa harness sync` y commitea")
+
+    def test_lo_que_viaja_en_el_repo_esta_generado(self):
+        for ruta in ("CLAUDE.md", "GEMINI.md", ".mcp.json"):
+            with self.subTest(ruta=ruta):
+                self.assertEqual((REPO / ruta).read_text(encoding="utf-8"), harness.archivos()[ruta])
 
     def test_los_generados_son_validos(self):
         for ruta, contenido in harness.archivos().items():
@@ -43,10 +50,13 @@ class TestAdaptadores(unittest.TestCase):
             self.assertIn("$ARGUMENTS", a[f".opencode/commands/{nombre}.md"])
             self.assertIn("{{args}}", tomllib.loads(a[f".gemini/commands/{nombre}.toml"])["prompt"])
 
-    def test_claude_y_gemini_importan_agents(self):
+    def test_claude_y_gemini_solo_apuntan_a_agents(self):
+        # El contrato vive en AGENTS.md: los punteros no repiten instrucciones.
         a = harness.archivos()
-        self.assertIn("@AGENTS.md", a["CLAUDE.md"])
-        self.assertIn("@./AGENTS.md", a["GEMINI.md"])
+        for nombre in ("CLAUDE.md", "GEMINI.md"):
+            with self.subTest(nombre=nombre):
+                lineas = [l for l in a[nombre].splitlines() if l.strip() and not l.startswith("<!--")]
+                self.assertEqual(lineas, ["@AGENTS.md"])
 
     def test_instrucciones_para_cada_harness(self):
         for h in harness.HARNESSES:

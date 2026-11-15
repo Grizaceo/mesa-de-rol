@@ -1,8 +1,0 @@
-{
-  "mcpServers": {
-    "mesa": {
-      "command": "bin/mesa-mcp",
-      "args": []
-    }
-  }
-}

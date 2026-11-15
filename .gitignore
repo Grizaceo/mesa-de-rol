@@ -24,3 +24,13 @@ partidas/*
 !partidas/los-hermanos-del-neva/
 # La partida activa también es de cada equipo.
 .mesa-activa
+# La configuración de cada harness es local: se genera con `bin/mesa harness sync`.
+.claude/
+.codex/
+.cursor/
+.gemini/
+.opencode/
+.hermes/
+.aider.conf.yml
+# Material de trabajo de los agentes: no viaja en un repo público.
+.workshop/

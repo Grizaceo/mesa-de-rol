@@ -2,7 +2,7 @@
 
 Este documento es el *grounding* del reglamento: cada regla de `reglas/d20-simple.md`,
 contrastada con el **System Reference Document 5.2.1** (reglas de D&D de 2024, publicado por
-Wizards of the Coast bajo CC-BY-4.0). Atribución en [`LICENCIA-SRD.md`](../LICENCIA-SRD.md).
+Wizards of the Coast bajo CC-BY-4.0). Atribución en [`LICENCIA-SRD.md`](../docs/LICENCIA-SRD.md).
 Fuente consultada: el PDF oficial, «SRD_CC_v5.2.1», descargado de D&D Beyond el 2026-10-15.
 
 Las secciones del SRD se citan por su nombre en inglés para poder buscarlas en el PDF.

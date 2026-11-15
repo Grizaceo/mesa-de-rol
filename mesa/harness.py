@@ -69,13 +69,11 @@ def _json(datos: dict) -> str:
 
 def archivos() -> dict[str, str]:
     """Ruta relativa → contenido de cada archivo generado."""
-    puntero = (
-        "Este repo es una mesa de rol dirigida por IA. Si te piden jugar, retomar o crear una partida,\n"
-        "eres el director de juego: sigue el contrato de AGENTS.md (importado abajo).\n"
-    )
+    # CLAUDE.md y GEMINI.md son solo punteros: el contrato del director vive en AGENTS.md y
+    # no se duplica. Los punteros son también lo que espera el bloque de reglas de vitrina.
     a = {
-        "CLAUDE.md": f"{CABECERA_MD}\n# CLAUDE.md\n\n{puntero}\n@AGENTS.md\n",
-        "GEMINI.md": f"{CABECERA_MD}\n# GEMINI.md\n\n{puntero}\n@./AGENTS.md\n",
+        "CLAUDE.md": f"{CABECERA_MD}\n@AGENTS.md\n",
+        "GEMINI.md": f"{CABECERA_MD}\n@AGENTS.md\n",
         ".mcp.json": _json({"mcpServers": {"mesa": {"type": "stdio", "command": MCP, "args": []}}}),
         ".cursor/mcp.json": _json({"mcpServers": {"mesa": {"command": MCP, "args": []}}}),
         ".gemini/settings.json": _json({"mcpServers": {"mesa": {"command": MCP, "args": []}}}),
@@ -99,13 +97,37 @@ def archivos() -> dict[str, str]:
     return a
 
 
+def _contenido_actual(ruta: str) -> str | None:
+    destino = _raiz() / ruta
+    return destino.read_text(encoding="utf-8") if destino.exists() else None
+
+
+def pendientes() -> list[str]:
+    """Archivos generados que faltan en esta máquina o que no coinciden con el origen."""
+    return [ruta for ruta, contenido in archivos().items() if _contenido_actual(ruta) != contenido]
+
+
+def desincronizados() -> list[str]:
+    """Archivos generados que existen pero no coinciden con el origen.
+
+    Los que faltan no van aquí: la configuración de cada harness es local y se genera con
+    `harness sync`, así que un clon recién descargado no está «desincronizado», está sin generar.
+    """
+    salida = []
+    for ruta, contenido in archivos().items():
+        actual = _contenido_actual(ruta)
+        if actual is not None and actual != contenido:
+            salida.append(ruta)
+    return salida
+
+
 def diferencias() -> list[str]:
-    return [ruta for ruta, contenido in archivos().items()
-            if not (_raiz() / ruta).exists() or (_raiz() / ruta).read_text(encoding="utf-8") != contenido]
+    """Alias de `pendientes`: lo que `harness sync` tiene que escribir."""
+    return pendientes()
 
 
 def sync() -> list[str]:
-    cambiados = diferencias()
+    cambiados = pendientes()
     generados = archivos()
     for ruta in cambiados:
         destino = _raiz() / ruta
@@ -164,9 +186,16 @@ def escanear_hermes() -> tuple[str, str]:
 def verificar() -> list[tuple[str, str, str]]:
     resultados = []
     resultados.append(("AGENTS.md", "ok" if (_raiz() / "AGENTS.md").exists() else "fallo", "contrato del director"))
-    pendientes = diferencias()
-    resultados.append(("adaptadores", "fallo" if pendientes else "ok",
-                       f"desincronizados: {', '.join(pendientes)} (corre `bin/mesa harness sync`)" if pendientes else "en sincronía con AGENTS.md y adaptadores/"))
+    desincronizados_ = desincronizados()
+    if desincronizados_:
+        nota = f"desincronizados: {', '.join(desincronizados_)} (corre `bin/mesa harness sync`)"
+        estado = "fallo"
+    else:
+        por_generar = [r for r in pendientes() if r not in desincronizados_]
+        nota = (f"en sincronía; {len(por_generar)} por generar en esta máquina (corre `bin/mesa harness sync`)"
+                if por_generar else "en sincronía con AGENTS.md y adaptadores/")
+        estado = "ok"
+    resultados.append(("adaptadores", estado, nota))
     lanzador = _raiz() / MCP
     resultados.append(("bin/mesa-mcp", "ok" if lanzador.exists() and os.access(lanzador, os.X_OK) else "fallo", "lanzador del servidor MCP"))
     resultados.append(("recursos empaquetados", *distribucion.verificar()))
