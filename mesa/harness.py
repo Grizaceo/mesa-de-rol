@@ -187,15 +187,13 @@ def verificar() -> list[tuple[str, str, str]]:
     resultados = []
     resultados.append(("AGENTS.md", "ok" if (_raiz() / "AGENTS.md").exists() else "fallo", "contrato del director"))
     desincronizados_ = desincronizados()
-    por_generar = [r for r in pendientes() if r not in desincronizados_]
     if desincronizados_:
         nota = f"desincronizados: {', '.join(desincronizados_)} (corre `bin/mesa harness sync`)"
         estado = "fallo"
-    elif por_generar:
-        nota = f"en sincronía; {len(por_generar)} por generar en esta máquina (corre `bin/mesa harness sync`)"
-        estado = "ok"
     else:
-        nota = "en sincronía con AGENTS.md y adaptadores/"
+        por_generar = [r for r in pendientes() if r not in desincronizados_]
+        nota = (f"en sincronía; {len(por_generar)} por generar en esta máquina (corre `bin/mesa harness sync`)"
+                if por_generar else "en sincronía con AGENTS.md y adaptadores/")
         estado = "ok"
     resultados.append(("adaptadores", estado, nota))
     lanzador = _raiz() / MCP

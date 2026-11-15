@@ -14,7 +14,8 @@ pasan de una partida a la siguiente.
   mitad de escena y se abre tal como quedó.
 - **Dos esquemas de reglas:** `d20-simple` (cuatro atributos-bono) para la demo y las partidas
   anteriores; `dnd-2024` (seis características con puntuación) para las nuevas. El motor de 2024
-  todavía no tira: ver [Límites](#límites).
+  ya calcula pruebas y ataques; lo que no calcula es la subida de nivel: ver
+  [Límites](#límites).
 - **Sin CI ni publicaciones:** no hay workflow, ni tags, ni instalación en un registro de paquetes.
   Las pruebas se corren a mano.
 
@@ -32,6 +33,10 @@ bin/mesa servir          # el visor, en http://127.0.0.1:8765
 El visor abre con la partida de demo: la escena, las fichas de los dos hermanos, los PNJ y las
 pistas que han salido, la bitácora de tiradas y la imagen de la escena. El mapa de la zona, los
 documentos y la memoria son de las partidas nuevas: la demo es anterior a esas tres cosas.
+
+Por defecto el visor abre además el chat con el narrador (por eso va `harness sync` antes). Si en
+tu máquina no hay un harness instalado, `bin/mesa servir --sin-agente` lo abre en solo lectura, con
+la bitácora.
 
 Para jugar de verdad, abre tu harness en el repo y dile «retomemos la partida». El narrador lee
 [`AGENTS.md`](AGENTS.md) y tira con las herramientas del repo: la CLI (`bin/mesa`) o el servidor MCP
@@ -76,21 +81,23 @@ El detalle está en [`guias/`](guias/README.md) (jugadores, director, combate, c
 
 ## Límites
 
-- **El esquema `dnd-2024` todavía no calcula tiradas.** `prueba`, `ataque` y `nivel` se niegan sobre
-  una partida con ese esquema: el motor prefiere no responder a responder mal, porque allí los
-  valores son puntuaciones y no bonos. La demo y las partidas anteriores usan `d20-simple`, que sí
-  calcula.
-- **El motor de reglas de 2024 es un corte vertical.** Hay características, combate y conjuros; el
-  resto se resuelve a mano. El detalle está en
+- **El esquema `dnd-2024` todavía no calcula la subida de nivel.** `nivel` se niega y el motor
+  prefiere no responder a responder mal. Las pruebas y los ataques sí se calculan, con las
+  mecánicas de 2024: modificador, competencia, CA y cobertura. La demo y las partidas anteriores
+  usan `d20-simple`, que sí calcula la subida de nivel.
+- **El motor de reglas de 2024 es un corte vertical.** Hay características, competencia, pericia,
+  combate, salvaciones y conjuros; lo que no está automatizado se resuelve a mano. El detalle está en
   [`guias/cobertura-2024.md`](guias/cobertura-2024.md).
 - **No hay modo autónomo.** Narrar exige un agente de terminal: no hay un runner que llame a un
   modelo por API.
 - **Las imágenes cuestan crédito y salen a la red.** Son opcionales: la biblioteca local y la tarjeta
   de escena cubren el caso normal.
-- **El visor es local.** Con `--agente` habla por ACP con el narrador; sin él, muestra la bitácora.
-  Ver [`guias/seguridad.md`](guias/seguridad.md).
+- **El visor es local.** Por defecto abre el chat con el narrador por ACP (`--agente hermes`); con
+  `--sin-agente` queda en solo lectura, con la bitácora. Ver
+  [`guias/seguridad.md`](guias/seguridad.md).
 - **La configuración de cada harness es local.** `bin/mesa harness sync` la genera en tu máquina; el
-  repo solo lleva el contrato (`AGENTS.md`) y las fuentes (`adaptadores/`).
+  repo lleva el contrato (`AGENTS.md`), sus punteros (`CLAUDE.md`, `GEMINI.md`), el MCP común
+  (`.mcp.json`) y las fuentes (`adaptadores/`).
 
 El código original es MIT (ver [`LICENSE`](LICENSE)); el texto de reglas adaptado del SRD 5.2.1 se
 queda bajo su licencia, CC-BY-4.0 (ver [`docs/LICENCIA-SRD.md`](docs/LICENCIA-SRD.md)).

@@ -40,7 +40,7 @@ Cada harness se probó en esta máquina el 2026-10-15 con su propio comando de l
 | **Hermes** | `AGENTS.md` nativo (prioridad: `.hermes.md` > `AGENTS.md` > `CLAUDE.md`) | opcional en `~/.hermes/config.yaml` | skill opcional | El escáner de inyección de Hermes aprueba `AGENTS.md` y `CLAUDE.md` ✓ |
 | **OpenCode** v2.0.29 | `AGENTS.md` nativo | `.opencode/opencode.json` (formato v2) | `.opencode/commands/` | `opencode mcp list`: *mesa connected* ✓ |
 | **Devin** CLI 3000.11 | `AGENTS.md` nativo | `.mcp.json` | — | `devin mcp list`: *mesa (.mcp.json)* ✓; `devin rules list`: carga AGENTS |
-| **Gemini CLI** 0.64.0 | `GEMINI.md` → `@./AGENTS.md` | `.gemini/settings.json` | `.gemini/commands/*.toml` | `gemini mcp list`: *mesa Connected* ✓ |
+| **Gemini CLI** 0.64.0 | `GEMINI.md` → `@AGENTS.md` | `.gemini/settings.json` | `.gemini/commands/*.toml` | `gemini mcp list`: *mesa Connected* ✓ |
 | **Cursor** (cursor-agent 2026.10.14) | `AGENTS.md` nativo | `.cursor/mcp.json` | — | `cursor-agent mcp list`: *mesa needs approval* ✓ |
 | **Aider** | `.aider.conf.yml` → lee `AGENTS.md` | no tiene MCP | — | No instalado aquí; modo limitado con `/run bin/mesa ...` |
 | **Cualquier otro** | «lee AGENTS.md y retoma la partida» | `bin/mesa-mcp` si soporta stdio | — | — |

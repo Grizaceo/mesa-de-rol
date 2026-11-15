@@ -52,7 +52,7 @@ bin/mesa servir --agente hermes --tailscale  # además, escribir desde tu otro e
 ```
 
 El agente sigue siendo el mismo, con este `AGENTS.md` y el MCP `mesa` de la partida; lo que piensa y
-lo que leen sus herramientas no se muestra. Sin `--agente`, el centro muestra la bitácora como
+lo que leen sus herramientas no se muestra. Con `--sin-agente`, el centro muestra la bitácora como
 conversación y se narra desde la terminal, como siempre. Ver
 [`../guias/seguridad.md`](../guias/seguridad.md).
 

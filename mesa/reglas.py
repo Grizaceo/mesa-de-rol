@@ -93,15 +93,16 @@ _NO_ACTUA = {"fuera de combate", "inconsciente", "incapacitado", "aturdido"}
 def exigir_legacy(partida: dict) -> None:
     """El motor d20-simple solo interpreta partidas legacy.
 
-    Sobre una partida 2024 (puntuaciones de 1 a 30) calcularía mal en silencio: sus
-    valores son puntuaciones, no bonos. Se niega con un motivo legible hasta que el
-    corte vertical de reglas 2024 (P2) traiga el motor que le corresponde.
+    Las partidas 2024 tienen motor propio desde el corte vertical P2: las pruebas y los
+    ataques se calculan con las mecánicas de 2024. Esta comprobación sigue para lo que ese
+    motor todavía no resuelve, como la subida de nivel, y para cualquier esquema sin motor:
+    se niegan con un motivo legible en vez de calcular mal en silencio.
     """
     if esquemas.version_de(partida) != esquemas.VERSION_LEGACY:
         raise ValueError(
-            f"«{partida.get('reglamento')}» todavía no tiene motor de reglas: llega con el corte vertical "
-            "de reglas 2024 (P2); mientras tanto, esta partida registra estado y dados, "
-            "pero no tira pruebas ni ataques"
+            f"«{partida.get('reglamento')}» todavía no tiene motor de reglas para esto: llega con el corte "
+            "vertical de reglas 2024 (P2); mientras tanto, esta partida registra estado y dados, "
+            "pero esta acción todavía no se calcula"
         )
 
 
