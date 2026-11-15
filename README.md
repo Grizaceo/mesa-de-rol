@@ -10,8 +10,8 @@ pasan de una partida a la siguiente.
 
 - **Partida de demo:** [`partidas/los-hermanos-del-neva/`](partidas/los-hermanos-del-neva/) es la
   partida de ejemplo que viaja en el repo. Dos hermanos pescadores en Petrogrado, otoño de 1917, con
-  su biblia, su bitácora, sus mapas y sus notas del director. Está guardada en pausa a mitad de
-  escena y se abre tal como quedó.
+  su biblia, su bitácora, su escena a medias y sus notas del director. Está guardada en pausa a
+  mitad de escena y se abre tal como quedó.
 - **Dos esquemas de reglas:** `d20-simple` (cuatro atributos-bono) para la demo y las partidas
   anteriores; `dnd-2024` (seis características con puntuación) para las nuevas. El motor de 2024
   todavía no tira: ver [Límites](#límites).
@@ -29,8 +29,9 @@ bin/mesa harness sync    # deja tu harness listo (Claude Code, Codex, OpenCode, 
 bin/mesa servir          # el visor, en http://127.0.0.1:8765
 ```
 
-El visor abre con la partida de demo: los dados, la ficha, el mapa de la zona, los documentos que
-encuentran los personajes y la memoria de la historia.
+El visor abre con la partida de demo: la escena, las fichas de los dos hermanos, los PNJ y las
+pistas que han salido, la bitácora de tiradas y la imagen de la escena. El mapa de la zona, los
+documentos y la memoria son de las partidas nuevas: la demo es anterior a esas tres cosas.
 
 Para jugar de verdad, abre tu harness en el repo y dile «retomemos la partida». El narrador lee
 [`AGENTS.md`](AGENTS.md) y tira con las herramientas del repo: la CLI (`bin/mesa`) o el servidor MCP
